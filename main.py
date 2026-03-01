@@ -23,12 +23,7 @@ def main():
     parser.add_argument("--start-from", type=int, default=1, help="Episodio di partenza")
     args = parser.parse_args()
 
-    # Import qui per evitare errori di import circolare
-    import sys
-    import os
-    sys.path.insert(0, os.path.dirname(__file__))
-
-    from orchestrator.graph import run_episode
+    from snack_market_sim.orchestrator.graph import run_episode
 
     if args.episode is not None:
         # Esegui un episodio specifico

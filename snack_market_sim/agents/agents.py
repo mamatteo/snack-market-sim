@@ -6,8 +6,8 @@ Principio 2 applicato: contesto ricco ma non prescrittivo.
 """
 
 import json
-from .base import BaseAgent
-from world.engine import PromotionProposal
+from snack_market_sim.agents.base import BaseAgent
+from snack_market_sim.world.engine import PromotionProposal
 
 
 # ============================================================================

@@ -20,16 +20,16 @@ from rich.console import Console
 from rich.table import Table
 from rich import print as rprint
 
-from agents.agents import (
+from snack_market_sim.agents.agents import (
     ManufacturerAgentA,
     ManufacturerAgentB,
     ManufacturerAgentC,
     RetailerAgent,
     ConsumerAgent,
 )
-from world.engine import WorldEngine, PromotionProposal
-from memory.graph import MarketMemoryGraph
-from memory.extractor import MemoryExtractor
+from snack_market_sim.world.engine import WorldEngine, PromotionProposal
+from snack_market_sim.memory.graph import MarketMemoryGraph
+from snack_market_sim.memory.extractor import MemoryExtractor
 
 console = Console()
 
@@ -231,7 +231,7 @@ def node_check_episode_end(state: SimState) -> SimState:
 def node_end_episode(state: SimState, world: WorldEngine, memory: MarketMemoryGraph,
                      extractor: MemoryExtractor, episode: int) -> SimState:
     """Fine episodio: distilla conoscenza, salva memoria, stampa report."""
-    from world.engine import WeeklyResult
+    from snack_market_sim.world.engine import WeeklyResult
 
     episode_results_raw = state.get("episode_results", [])
     episode_results = [
