@@ -41,15 +41,33 @@ class BaseAgent(ABC):
 
     def _extract_json(self, text: str) -> dict:
         """Estrae JSON dalla risposta del modello."""
+        def _sanitize(s: str) -> str:
+            # Rimuove + davanti ai numeri (non è JSON standard ma alcuni LLM lo producono)
+            return re.sub(r'(?<!["\w])\+(\d)', r'\1', s)
+
         # Cerca blocco ```json ... ```
         match = re.search(r"```json\s*(.*?)\s*```", text, re.DOTALL)
         if match:
-            return json.loads(match.group(1))
-        # Cerca { ... } direttamente
-        match = re.search(r"\{.*\}", text, re.DOTALL)
-        if match:
-            return json.loads(match.group(0))
-        raise ValueError(f"Nessun JSON trovato nella risposta: {text[:200]}")
+            try:
+                return json.loads(_sanitize(match.group(1)))
+            except json.JSONDecodeError:
+                pass
+
+        # Fallback: estrai il blocco { } più esterno con stack di parentesi
+        start = text.find("{")
+        if start != -1:
+            depth = 0
+            for i, ch in enumerate(text[start:], start):
+                if ch == "{":
+                    depth += 1
+                elif ch == "}":
+                    depth -= 1
+                    if depth == 0:
+                        try:
+                            return json.loads(_sanitize(text[start:i+1]))
+                        except json.JSONDecodeError:
+                            break
+        raise ValueError(f"Nessun JSON valido trovato nella risposta: {text[:200]}")
 
     def reset_episode(self):
         self.episode_history = []

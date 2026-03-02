@@ -224,7 +224,7 @@ def node_world_step(state: SimState, world: WorldEngine) -> SimState:
 
 def node_check_episode_end(state: SimState) -> SimState:
     """Controlla se l'episodio è finito (52 settimane)."""
-    done = state["week"] >= 52
+    done = state["week"] >= 4
     return {**state, "done": done}
 
 
@@ -394,7 +394,7 @@ def run_episode(episode: int, model: str = "qwen3:8b"):
         "done": False,
     }
 
-    final_state = graph.invoke(initial_state)
+    final_state = graph.invoke(initial_state, config={"recursion_limit": 500})
     return final_state
 
 

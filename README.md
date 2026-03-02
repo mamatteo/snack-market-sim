@@ -2,7 +2,7 @@
 
 Una simulazione genuinamente agentica della gestione delle categorie snack nel mercato GDO italiano.
 
-Cinque agenti LLM negoziano spazio scaffale, promozioni e assortimento in episodi da 52 settimane. Un grafo di memoria condiviso accumula conoscenza tra gli episodi — il sistema impara come sistema, non come somma di agenti isolati.
+Cinque agenti LLM negoziano spazio scaffale, promozioni e assortimento in episodi configurabili (default: 4 settimane). Un grafo di memoria condiviso accumula conoscenza tra gli episodi — il sistema impara come sistema, non come somma di agenti isolati.
 
 ---
 
@@ -78,8 +78,8 @@ L'orchestratore coordina ma non decide. Il ragionamento strategico appartiene ag
 ### Requisiti
 
 - Python 3.11+
-- [Ollama](https://ollama.ai) con `qwen3:8b` o `qwen3:14b`
-- Mac Apple Silicon consigliato (M3 con 16GB+ esegue qwen3:14b comodamente)
+- [Ollama](https://ollama.ai) installato e in esecuzione
+- Un modello compatibile scaricato (vedi sotto)
 
 ### Installazione
 
@@ -87,33 +87,61 @@ L'orchestratore coordina ma non decide. Il ragionamento strategico appartiene ag
 git clone https://github.com/mamatteo/snack-market-sim.git
 cd snack-market-sim
 pip install -r requirements.txt
-ollama pull qwen3:8b
+```
+
+### Modelli supportati
+
+Il sistema è testato con i seguenti modelli Ollama:
+
+| Modello | Dimensione | Note |
+|---|---|---|
+| `qwen3:8b` | ~5 GB | Raccomandato — qualità e velocità bilanciate |
+| `qwen3:14b` | ~9 GB | Qualità superiore, richiede 16GB+ RAM |
+| `qwen2.5:latest` | ~5 GB | Alternativa funzionante se qwen3 non disponibile |
+| `llama3.2:latest` | ~2 GB | Più veloce, qualità JSON meno affidabile |
+
+```bash
+ollama pull qwen3:8b   # o il modello preferito
 ```
 
 ### Esecuzione
 
 ```bash
-# Singolo episodio
-python main.py
+# Singolo episodio (4 settimane, modello default qwen3:8b)
+python3 main.py
+
+# Modello alternativo
+python3 main.py --model qwen2.5:latest
 
 # 10 episodi consecutivi (la memoria si accumula tra tutti)
-python main.py --episodes 10
+python3 main.py --episodes 10
 
-# Modello più grande
-python main.py --model qwen3:14b
+# Episodio specifico
+python3 main.py --episode 5
 
 # Parte da un numero di episodio specifico
-python main.py --episodes 5 --start-from 11
+python3 main.py --episodes 5 --start-from 11
 ```
+
+> **Nota sulla durata:** ogni settimana richiede 5 chiamate LLM (una per agente). Con modelli locali su hardware consumer, un episodio da 4 settimane dura tipicamente 5–15 minuti. La durata dell'episodio è configurabile in `orchestrator/graph.py` → `node_check_episode_end` (costante `>= 4`).
+
+### Output generati
+
+| File | Contenuto |
+|---|---|
+| `episode_log.json` | Reward per agente e nuova conoscenza strutturale per ogni episodio |
+| `market_memory.json` | Grafo di memoria persistente — nodi, archi, confidenza, layer |
 
 ### Cosa osservare
 
-Dopo ogni episodio il sistema stampa:
-- Reward per agente
+Dopo ogni episodio il sistema stampa nel terminale:
+- Reward per agente (scala ~0–2, blend 60% individuale + 40% sistemico)
 - Conoscenza strutturale accumulata (leggi Layer 1)
 - Nuove promozioni da Layer 2 → Layer 1 in questo episodio
 
-Dopo 5-10 episodi si inizia a vedere emergere conoscenza strutturale: pattern stagionali, regolarità del post-promo dip, pattern di comportamento dei manufacturer.
+I **reward bassi nei primi episodi sono normali**: i KPI sono normalizzati su base annuale, quindi con poche settimane il numeratore è piccolo.
+
+Dopo 5–10 episodi si inizia a vedere emergere conoscenza strutturale: lift promozionale per SKU, tasso di accettazione del retailer per manufacturer, domanda stagionale. Gli agenti leggono questa memoria ad ogni settimana e adattano le loro decisioni.
 
 ---
 

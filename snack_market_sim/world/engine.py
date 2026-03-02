@@ -174,7 +174,7 @@ class WorldEngine:
         promo_lift = 1.0
         if promo:
             promo_lift = PROMO_LIFT_BASE + (promo.proposal.discount_pct / 100) * 0.5
-            if promo.proposal.display_fee > 400:
+            if (promo.proposal.display_fee or 0) > 400:
                 promo_lift += DISPLAY_FEE_LIFT_BONUS
             promo_lift = min(promo_lift, 3.0)
 
@@ -203,7 +203,7 @@ class WorldEngine:
             transfer_price = sku.manufacturer_list_price
             retailer_price = sku.retailer_list_price
 
-        display_fee = promo.proposal.display_fee if promo else 0.0
+        display_fee = (promo.proposal.display_fee or 0.0) if promo else 0.0
 
         mfr_revenue = transfer_price * units + display_fee
         mfr_cost = sku.manufacturer_cost * units
