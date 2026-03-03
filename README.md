@@ -1,4 +1,4 @@
-# Snack Market Sim
+# Agentic Category Management
 
 La gestione delle categorie in GDO è un problema di negoziazione multi-stakeholder: i manufacturer vogliono spazio a scaffale e promozioni redditizie, il retailer vuole margine per metro lineare, i consumatori spingono la domanda attraverso trend che cambiano nel tempo. Le decisioni sono sequenziali, gli incentivi sono disallineati, e la conoscenza si accumula episodio dopo episodio.
 
@@ -121,7 +121,7 @@ A fine episodio il sistema stampa nel terminale i reward per agente (scala ~0–
 ## Struttura del progetto
 
 ```
-snack_market_sim/
+agentic_category_management/
 ├── main.py
 ├── agents/
 │   ├── agent.py         # Classe base: chiamata LLM + parsing JSON + history privata
