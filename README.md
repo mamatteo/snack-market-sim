@@ -54,6 +54,133 @@ A fine episodio, la conoscenza emersa viene distillata nel grafo di memoria, pro
 
 ---
 
+## Calibrazione del sistema
+
+Prima di portare questo sistema in produzione su un mercato reale, è necessario raccogliere i parametri che caratterizzano quel mercato specifico. Questa sezione elenca le domande da porre al cliente e il punto esatto del codice dove ciascuna risposta si traduce in configurazione.
+
+Tutti i parametri numerici sono centralizzati in `config.py` (root del progetto) — l'unico file da editare per ricalibrate la simulazione. Due elementi fanno eccezione per ragioni strutturali e si configurano direttamente in `world/market_simulator.py`: il catalogo SKU (`SKUS`) e il profilo di stagionalità (`_build_seasonality()`).
+
+### Struttura del mercato
+
+**Domande al cliente:** Quanti brand ci sono nella categoria? Quanti SKU per brand? Qual è la struttura competitiva (premium vs mass vs private label vs challenger)? Quali sono i volumi di riferimento per ciascun prodotto?
+
+Il catalogo SKU è definito nel dizionario `SKUS` in `world/market_simulator.py`. Per ogni SKU si configurano:
+
+| Campo | Significato |
+|---|---|
+| `base_demand` | Volume settimanale di riferimento in assenza di perturbazioni |
+| `manufacturer_cost` | Costo di produzione per unità |
+| `manufacturer_list_price` | Prezzo di listino manufacturer → retailer |
+| `retailer_list_price` | Prezzo al consumatore in assenza di promozioni |
+| `manufacturer_id` | A quale agente appartiene lo SKU (`mfr_a`, `mfr_b`, `mfr_c`, `retailer`) |
+| `subcategory` | `chips` \| `crackers` \| `healthy` — determina l'impatto del trend consumer |
+
+La private label del retailer è configurabile allo stesso modo: `manufacturer_id = "retailer"` e `manufacturer_list_price` uguale al costo (margine diretto al consumatore).
+
+### Stagionalità
+
+**Domande al cliente:** Quando sono i picchi di vendita in questa categoria? Qual è la magnitudine? Ci sono cali stagionali marcati?
+
+La stagionalità è definita in `_build_seasonality()` in `world/market_simulator.py`. Produce un array di 52 moltiplicatori settimanali e si adatta modificando i range di settimane e i coefficienti:
+
+```python
+def _build_seasonality() -> np.ndarray:
+    s = np.ones(52)
+    s[23:35] *= 1.25   # estate (settimane 24–35): +25%
+    s[47:52] *= 1.35   # natale (settimane 48–52): +35%
+    s[0:2]   *= 1.20   # capodanno: +20%
+    s[2:6]   *= 0.80   # gennaio post-feste: −20%
+    return s
+```
+
+Per una categoria con picco back-to-school e nessun effetto estivo, si modificano semplicemente i range e i moltiplicatori.
+
+### Meccaniche promozionali
+
+**Domande al cliente:** Qual è il lift tipico di una promozione in questa categoria? Un'esposizione preferenziale (display, testa di gondola) genera incremento misurabile? Quanto dura il calo post-promo e con che intensità?
+
+```python
+# config.py
+PROMO_LIFT_BASE        = 1.8   # lift base sulla domanda con promo attiva (×1.8 = +80%)
+DISPLAY_FEE_THRESHOLD  = 400   # soglia display fee (€) oltre cui scatta il bonus
+DISPLAY_FEE_LIFT_BONUS = 0.3   # bonus lift per posizionamento premium
+PROMO_LIFT_CAP         = 3.0   # lift massimo consentito
+POST_PROMO_DIP_FACTOR  = 0.20  # calo domanda post-promozione (−20%)
+POST_PROMO_DIP_WEEKS   = 3     # durata del post-promo dip in settimane
+```
+
+### Comportamento consumer
+
+**Domande al cliente:** Il segmento healthy è in crescita nel vostro mercato? Con che intensità i trend di consumo influenzano gli acquisti? I consumatori sono price-elastic in questa categoria?
+
+```python
+# config.py
+HEALTHY_TREND_SENSITIVITY = 0.3   # +1 di healthy_preference → +30% domanda prodotti healthy
+PRICE_SENSITIVITY_IMPACT  = 0.1   # +1 di price_sensitivity  → −10% domanda complessiva
+DEMAND_NOISE_SIGMA        = 0.05  # volatilità settimanale (σ del rumore gaussiano)
+```
+
+### Struttura finanziaria
+
+**Domande al cliente:** Qual è il margine lordo tipico del retailer su prodotti in promozione? Come funziona la display fee — è flat o percentuale?
+
+```python
+# config.py
+RETAILER_MARGIN_ON_PROMO = 0.30  # margine retailer sul transfer price ridotto (~30% in GDO Italia)
+```
+
+I costi e i prezzi di listino di ciascun SKU si configurano direttamente in `SKUS` (`world/market_simulator.py`).
+
+### KPI e reward
+
+**Domande al cliente:** Cosa misura il successo per ciascun attore? Revenue, margine, ROI promozionale? Quanto pesa la performance sistemica (categoria) rispetto a quella individuale? Esiste un accordo di joint business planning che premia la crescita condivisa?
+
+```python
+# config.py — pesi reward manufacturer (revenue, margine, ROI promo)
+MFR_REWARD_WEIGHT_REVENUE   = 0.40
+MFR_REWARD_WEIGHT_MARGIN    = 0.30
+MFR_REWARD_WEIGHT_PROMO_ROI = 0.30
+
+# pesi reward retailer (margine categoria, volume, rotazione)
+RTL_REWARD_WEIGHT_MARGIN = 0.40
+RTL_REWARD_WEIGHT_VOLUME = 0.30
+RTL_REWARD_WEIGHT_TURNS  = 0.30
+
+# blend individuale/sistemico nel reward finale
+SYSTEM_BLEND_RATIO = 0.40  # 0.0 = puramente competitivo · 1.0 = puramente cooperativo
+```
+
+I threshold di normalizzazione (`MFR_REVENUE_NORM`, `RTL_MARGIN_NORM`, ecc.) determinano la scala dei KPI e vanno adattati alle dimensioni reali del mercato simulato.
+
+### Velocità di apprendimento
+
+**Domande al cliente:** Quante stagioni devono confermare un pattern prima che diventi una "legge di mercato"? Con che velocità devono decadere le osservazioni tattiche non confermate?
+
+```python
+# config.py
+MEMORY_PROMOTION_EVIDENCE   = 5     # episodi necessari per Layer 2 → Layer 1
+MEMORY_PROMOTION_CONFIDENCE = 0.75  # confidenza minima per la promozione
+MEMORY_CONFIRMATION_BOOST   = 0.08  # incremento confidenza per ogni conferma
+MEMORY_CONTRADICTION_DECAY  = 0.15  # decremento confidenza per ogni contraddizione
+MEMORY_TACTICAL_DECAY       = 0.05  # decay per episodio degli archi tattici non confermati
+```
+
+Con i valori di default le prime leggi strutturali compaiono dopo 5–10 episodi. Ridurre `MEMORY_PROMOTION_EVIDENCE` accelera l'apprendimento; aumentare `MEMORY_TACTICAL_DECAY` rende il sistema più reattivo ai cambiamenti di mercato.
+
+### Orizzonte della simulazione
+
+**Domande al cliente:** Quante settimane per scenario? Un mese, un trimestre, un anno? Quale livello di qualità e velocità LLM è accettabile?
+
+```python
+# config.py
+EPISODE_LENGTH_WEEKS    = 4          # settimane per episodio (4 = mensile, 13 = trimestrale, 52 = annuale)
+SHORT_TERM_MEMORY_SIZE  = 10         # dimensione sliding window memoria a breve termine
+SHORT_TERM_CONTEXT_SIZE = 5          # voci incluse nel prompt dell'agente
+DEFAULT_MODEL           = "qwen3:8b" # modello LLM di default
+```
+
+---
+
 ## La memoria come protagonista
 
 Il componente più importante del sistema non è nessun singolo agente — è la struttura di memoria che gli agenti condividono e alimentano nel tempo. Ma "memoria" non è un concetto uniforme: esistono due tipi con orizzonti temporali, funzioni e logiche di accesso radicalmente diverse, e la scelta di progettarli in modo asimmetrico non è arbitraria.

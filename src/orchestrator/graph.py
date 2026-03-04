@@ -20,6 +20,8 @@ from rich.console import Console
 from rich.table import Table
 from rich import print as rprint
 
+from config import EPISODE_LENGTH_WEEKS
+
 from src.agents.agents import (
     ManufacturerAgentA,
     ManufacturerAgentB,
@@ -225,8 +227,8 @@ def node_world_step(state: SimState, world: MarketSimulator) -> SimState:
 
 
 def node_check_episode_end(state: SimState) -> SimState:
-    """Controlla se l'episodio è finito (52 settimane)."""
-    done = state["week"] >= 4
+    """Controlla se l'episodio è finito (durata configurabile in config.py → EPISODE_LENGTH_WEEKS)."""
+    done = state["week"] >= EPISODE_LENGTH_WEEKS
     return {**state, "done": done}
 
 

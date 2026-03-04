@@ -26,6 +26,14 @@ from typing import Optional
 from pydantic import BaseModel, Field
 import networkx as nx
 
+from config import (
+    MEMORY_PROMOTION_EVIDENCE   as PROMOTION_THRESHOLD_EVIDENCE,
+    MEMORY_PROMOTION_CONFIDENCE as PROMOTION_THRESHOLD_CONFIDENCE,
+    MEMORY_CONTRADICTION_DECAY  as CONTRADICTION_DECAY,
+    MEMORY_CONFIRMATION_BOOST   as CONFIRMATION_BOOST,
+    MEMORY_TACTICAL_DECAY       as TACTICAL_DECAY_PER_EPISODE,
+)
+
 
 class MemoryLayer(str, Enum):
     STRUCTURAL = "structural"   # Layer 1 — leggi del mercato
@@ -64,12 +72,7 @@ class MemoryEdge(BaseModel):
     contradictions: int = 0               # volte in cui è stato contraddetto
 
 
-# Soglie per promozione Layer 2 → Layer 1
-PROMOTION_THRESHOLD_EVIDENCE = 5       # almeno 5 conferme
-PROMOTION_THRESHOLD_CONFIDENCE = 0.75  # confidenza > 75%
-CONTRADICTION_DECAY = 0.15             # quanto decade la confidenza per ogni contraddizione
-CONFIRMATION_BOOST = 0.08              # quanto cresce la confidenza per ogni conferma
-TACTICAL_DECAY_PER_EPISODE = 0.05      # decay per episodio senza conferma (solo Layer 2)
+# Le soglie Layer 2 → Layer 1 sono importate da config.py (vedere import sopra).
 
 
 class MarketMemoryGraph:

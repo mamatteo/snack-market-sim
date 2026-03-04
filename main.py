@@ -11,6 +11,7 @@ Uso:
 import argparse
 import time
 from rich.console import Console
+from config import DEFAULT_MODEL
 
 console = Console()
 
@@ -19,7 +20,7 @@ def main():
     parser = argparse.ArgumentParser(description="Agentic Category Management")
     parser.add_argument("--episode", type=int, default=None, help="Episodio specifico da girare")
     parser.add_argument("--episodes", type=int, default=1, help="Numero di episodi consecutivi")
-    parser.add_argument("--model", type=str, default="qwen3:8b", help="Modello Ollama da usare")
+    parser.add_argument("--model", type=str, default=DEFAULT_MODEL, help="Modello Ollama da usare")
     parser.add_argument("--start-from", type=int, default=1, help="Episodio di partenza")
     args = parser.parse_args()
 

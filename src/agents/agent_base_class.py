@@ -21,6 +21,8 @@ from abc import ABC, abstractmethod
 from langchain_ollama import ChatOllama
 from langchain_core.messages import SystemMessage, HumanMessage
 
+from config import SHORT_TERM_MEMORY_SIZE, SHORT_TERM_CONTEXT_SIZE
+
 
 class BaseAgent(ABC):
 
@@ -83,16 +85,16 @@ class BaseAgent(ABC):
         self.short_term_memory = []
 
     def add_to_short_term_memory(self, entry: dict):
-        """Aggiunge una decisione alla memoria a breve termine (sliding window di 10 settimane)."""
+        """Aggiunge una decisione alla memoria a breve termine (sliding window configurabile)."""
         self.short_term_memory.append(entry)
-        if len(self.short_term_memory) > 10:
-            self.short_term_memory = self.short_term_memory[-10:]
+        if len(self.short_term_memory) > SHORT_TERM_MEMORY_SIZE:
+            self.short_term_memory = self.short_term_memory[-SHORT_TERM_MEMORY_SIZE:]
 
     def get_short_term_context(self) -> str:
         """Serializza la memoria a breve termine in linguaggio naturale per il prompt dell'agente."""
         if not self.short_term_memory:
             return "Nessuna storia recente."
         lines = ["Storia recente (ultime settimane):"]
-        for entry in self.short_term_memory[-5:]:
+        for entry in self.short_term_memory[-SHORT_TERM_CONTEXT_SIZE:]:
             lines.append(f"  W{entry.get('week', '?')}: {entry.get('summary', '')}")
         return "\n".join(lines)

@@ -6,12 +6,28 @@ Gestisce:
 - Domanda moltiplicativa con stagionalità, lift promozionale, post-promo dip
 - Financials per manufacturer e retailer
 - Reward calculation per tutti gli agenti
+
+Parametri di calibrazione: config.py (root del progetto).
+Catalogo SKU e stagionalità: direttamente in questo file (SKUS, _build_seasonality).
 """
 
 import numpy as np
 from dataclasses import dataclass, field
 from typing import Optional
 from enum import Enum
+
+from config import (
+    PROMO_LIFT_BASE, DISPLAY_FEE_THRESHOLD, DISPLAY_FEE_LIFT_BONUS,
+    PROMO_LIFT_CAP, POST_PROMO_DIP_FACTOR, POST_PROMO_DIP_WEEKS,
+    HEALTHY_TREND_SENSITIVITY, PRICE_SENSITIVITY_IMPACT,
+    DEMAND_NOISE_SIGMA, DEMAND_FLOOR_MULTIPLIER,
+    RETAILER_MARGIN_ON_PROMO,
+    MFR_REWARD_WEIGHT_REVENUE, MFR_REWARD_WEIGHT_MARGIN, MFR_REWARD_WEIGHT_PROMO_ROI,
+    RTL_REWARD_WEIGHT_MARGIN, RTL_REWARD_WEIGHT_VOLUME, RTL_REWARD_WEIGHT_TURNS,
+    SYSTEM_BLEND_RATIO,
+    MFR_REVENUE_NORM, MFR_MARGIN_NORM, MFR_ROI_NORM,
+    RTL_MARGIN_NORM, RTL_VOLUME_NORM, RTL_TURNS_NORM,
+)
 
 
 class SubCategory(str, Enum):
@@ -99,12 +115,7 @@ def _build_seasonality() -> np.ndarray:
 
 SEASONALITY = _build_seasonality()
 
-# Parametri domanda
-PROMO_LIFT_BASE = 1.8          # lift base con promozione (prima del display)
-DISPLAY_FEE_LIFT_BONUS = 0.3   # bonus lift se display fee > 400€
-POST_PROMO_DIP_FACTOR = 0.20   # % di domanda persa nelle 3 settimane successive
-POST_PROMO_DIP_WEEKS = 3
-COMPETITOR_REACTION_PROB = 0.20  # probabilità che un competitor promuova nella stessa categoria
+# I parametri di domanda sono definiti in config.py (root del progetto).
 
 
 class MarketSimulator:
@@ -164,19 +175,19 @@ class MarketSimulator:
         # Consumer trend impact
         trend_mult = 1.0
         if sku.subcategory == SubCategory.HEALTHY:
-            trend_mult += self.consumer_trend["healthy_preference"] * 0.3
-        price_sensitivity_impact = -self.consumer_trend["price_sensitivity"] * 0.1
+            trend_mult += self.consumer_trend["healthy_preference"] * HEALTHY_TREND_SENSITIVITY
+        price_sensitivity_impact = -self.consumer_trend["price_sensitivity"] * PRICE_SENSITIVITY_IMPACT
         trend_mult += price_sensitivity_impact
-        trend_mult = max(0.5, trend_mult)
+        trend_mult = max(DEMAND_FLOOR_MULTIPLIER, trend_mult)
 
         # Promotion lift
         promo = self._get_active_promotion_for_sku(sku.id)
         promo_lift = 1.0
         if promo:
             promo_lift = PROMO_LIFT_BASE + (promo.proposal.discount_pct / 100) * 0.5
-            if (promo.proposal.display_fee or 0) > 400:
+            if (promo.proposal.display_fee or 0) > DISPLAY_FEE_THRESHOLD:
                 promo_lift += DISPLAY_FEE_LIFT_BONUS
-            promo_lift = min(promo_lift, 3.0)
+            promo_lift = min(promo_lift, PROMO_LIFT_CAP)
 
         # Post-promo dip
         dip_mult = 1.0
@@ -184,7 +195,7 @@ class MarketSimulator:
             dip_mult = 1.0 - POST_PROMO_DIP_FACTOR
 
         # Noise
-        noise = self.rng.normal(1.0, 0.05)
+        noise = self.rng.normal(1.0, DEMAND_NOISE_SIGMA)
 
         units = base * season * trend_mult * promo_lift * dip_mult * noise
         units = max(0, units)
@@ -198,7 +209,7 @@ class MarketSimulator:
     def _compute_financials(self, sku: SKU, units: float, promo: Optional[ActivePromotion]) -> WeeklyResult:
         if promo:
             transfer_price = sku.manufacturer_list_price * (1 - promo.proposal.discount_pct / 100)
-            retailer_price = transfer_price * 1.30  # retailer mantiene ~30% margin
+            retailer_price = transfer_price * (1 + RETAILER_MARGIN_ON_PROMO)
         else:
             transfer_price = sku.manufacturer_list_price
             retailer_price = sku.retailer_list_price
@@ -329,12 +340,16 @@ class MarketSimulator:
                 max(1, len(promo_results))
             ) if promo_results else 0.0
 
-            # KPI normalizzati e clippati
-            rev_score   = np.clip(total_revenue / 50000, 0, 2.0)
-            margin_score = np.clip(total_margin / 20000, -1.0, 2.0)
-            roi_score   = np.clip(promo_roi / 500, 0, 3.0)
+            # KPI normalizzati e clippati (soglie configurabili in config.py)
+            rev_score    = np.clip(total_revenue / MFR_REVENUE_NORM, 0, 2.0)
+            margin_score = np.clip(total_margin  / MFR_MARGIN_NORM,  -1.0, 2.0)
+            roi_score    = np.clip(promo_roi     / MFR_ROI_NORM,     0, 3.0)
 
-            rewards[mfr_id] = 0.40 * rev_score + 0.30 * margin_score + 0.30 * roi_score
+            rewards[mfr_id] = (
+                MFR_REWARD_WEIGHT_REVENUE   * rev_score +
+                MFR_REWARD_WEIGHT_MARGIN    * margin_score +
+                MFR_REWARD_WEIGHT_PROMO_ROI * roi_score
+            )
 
         # Retailer
         ret_results = [r for r in episode_results]
@@ -342,21 +357,27 @@ class MarketSimulator:
         total_units = sum(r.units_sold for r in ret_results)
         listed_skus = sum(1 for s in self.skus.values() if s.is_listed)
 
-        margin_score  = np.clip(total_ret_margin / 80000, 0, 2.0)
-        volume_score  = np.clip(total_units / 100000, 0, 2.0)
-        turns_score   = np.clip(total_units / (listed_skus * 52 * 100), 0, 2.0)
+        margin_score = np.clip(total_ret_margin / RTL_MARGIN_NORM, 0, 2.0)
+        volume_score = np.clip(total_units      / RTL_VOLUME_NORM, 0, 2.0)
+        turns_score  = np.clip(total_units / (listed_skus * 52 * RTL_TURNS_NORM), 0, 2.0)
 
-        rewards["retailer"] = 0.40 * margin_score + 0.30 * volume_score + 0.30 * turns_score
+        rewards["retailer"] = (
+            RTL_REWARD_WEIGHT_MARGIN * margin_score +
+            RTL_REWARD_WEIGHT_VOLUME * volume_score +
+            RTL_REWARD_WEIGHT_TURNS  * turns_score
+        )
 
         # Consumer agent reward — quanto bene ha predetto la domanda
         rewards["consumer"] = 0.5  # placeholder, verrà affinato
 
         # Sistema efficiency — media dei reward di tutti gli agenti (principio 4)
-        all_scores = [v for v in rewards.values()]
-        system_efficiency = np.mean(all_scores)
+        system_efficiency = np.mean(list(rewards.values()))
 
-        # Blend 60% individuale + 40% sistemico (come nell'articolo, ma per tutti)
+        # Blend individuale/sistemico (proporzioni configurabili in config.py)
         for agent_id in rewards:
-            rewards[agent_id] = 0.60 * rewards[agent_id] + 0.40 * system_efficiency
+            rewards[agent_id] = (
+                (1 - SYSTEM_BLEND_RATIO) * rewards[agent_id] +
+                SYSTEM_BLEND_RATIO * system_efficiency
+            )
 
         return rewards
