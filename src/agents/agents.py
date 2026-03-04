@@ -36,7 +36,7 @@ Il retailer ha anche una private label che compete con i tuoi prodotti.
 Ragiona in modo strategico. Le tue decisioni di oggi influenzano le settimane future."""
 
     def decide(self, world_state: str, memory_context: str, week: int) -> dict:
-        history = self.get_history_summary()
+        history = self.get_short_term_context()
 
         prompt = f"""{world_state}
 
@@ -61,7 +61,7 @@ Rispondi SOLO con un JSON in questo formato:
 
         response = self._call_llm(prompt)
         result = self._extract_json(response)
-        self.add_to_history({"week": week, "summary": f"action={result.get('action')} sku={result.get('sku_id')} discount={result.get('discount_pct')}%"})
+        self.add_to_short_term_memory({"week": week, "summary": f"action={result.get('action')} sku={result.get('sku_id')} discount={result.get('discount_pct')}%"})
         return result
 
 
@@ -91,7 +91,7 @@ Le promozioni aggressive possono conquistare volume ma erodono il margine.
 Ragiona su come bilanciare volume e profittabilità nel lungo periodo."""
 
     def decide(self, world_state: str, memory_context: str, week: int) -> dict:
-        history = self.get_history_summary()
+        history = self.get_short_term_context()
 
         prompt = f"""{world_state}
 
@@ -116,7 +116,7 @@ Rispondi SOLO con un JSON in questo formato:
 
         response = self._call_llm(prompt)
         result = self._extract_json(response)
-        self.add_to_history({"week": week, "summary": f"action={result.get('action')} sku={result.get('sku_id')} discount={result.get('discount_pct')}%"})
+        self.add_to_short_term_memory({"week": week, "summary": f"action={result.get('action')} sku={result.get('sku_id')} discount={result.get('discount_pct')}%"})
         return result
 
 
@@ -147,7 +147,7 @@ Ragiona su come usare i trend consumer a tuo vantaggio e come costruire una rela
 di lungo periodo con il retailer."""
 
     def decide(self, world_state: str, memory_context: str, week: int) -> dict:
-        history = self.get_history_summary()
+        history = self.get_short_term_context()
 
         prompt = f"""{world_state}
 
@@ -172,7 +172,7 @@ Rispondi SOLO con un JSON in questo formato:
 
         response = self._call_llm(prompt)
         result = self._extract_json(response)
-        self.add_to_history({"week": week, "summary": f"action={result.get('action')} sku={result.get('sku_id')} discount={result.get('discount_pct')}%"})
+        self.add_to_short_term_memory({"week": week, "summary": f"action={result.get('action')} sku={result.get('sku_id')} discount={result.get('discount_pct')}%"})
         return result
 
 
@@ -205,7 +205,7 @@ Una promozione rifiutata male può perdere un'opportunità e danneggiare la rela
 Ragiona sul lungo periodo. I manufacturer sono partner strategici, non avversari."""
 
     def decide(self, world_state: str, memory_context: str, week: int, proposals: list[dict]) -> dict:
-        history = self.get_history_summary()
+        history = self.get_short_term_context()
 
         proposals_text = json.dumps(proposals, indent=2, ensure_ascii=False) if proposals else "Nessuna proposta questa settimana."
 
@@ -242,7 +242,7 @@ Rispondi SOLO con un JSON in questo formato:
         response = self._call_llm(prompt)
         result = self._extract_json(response)
         n_accepted = sum(1 for d in result.get("decisions", []) if d.get("decision") == "accept")
-        self.add_to_history({"week": week, "summary": f"proposals={len(proposals)} accepted={n_accepted}"})
+        self.add_to_short_term_memory({"week": week, "summary": f"proposals={len(proposals)} accepted={n_accepted}"})
         return result
 
 
@@ -274,7 +274,7 @@ Il tuo obiettivo è rappresentare fedelmente il comportamento aggregato dei cons
 non massimizzare nessun KPI specifico."""
 
     def decide(self, world_state: str, memory_context: str, week: int) -> dict:
-        history = self.get_history_summary()
+        history = self.get_short_term_context()
 
         prompt = f"""{world_state}
 
@@ -299,5 +299,5 @@ Rispondi SOLO con un JSON in questo formato:
 
         response = self._call_llm(prompt)
         result = self._extract_json(response)
-        self.add_to_history({"week": week, "summary": f"healthy={result.get('healthy_preference',0):+.2f} price_sens={result.get('price_sensitivity',0):+.2f}"})
+        self.add_to_short_term_memory({"week": week, "summary": f"healthy={result.get('healthy_preference',0):+.2f} price_sens={result.get('price_sensitivity',0):+.2f}"})
         return result

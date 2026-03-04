@@ -1,12 +1,21 @@
 """
-Memory Graph — il protagonista del sistema.
+MarketMemoryGraph — memoria a lungo termine del sistema.
 
-Due layer:
-- Layer 1: Conoscenza Strutturale (decay lento, leggi del mercato)
-- Layer 2: Conoscenza Tattica (decay rapido, pattern contingenti)
+Persiste su disco tra tutti gli episodi ed è condivisa tra tutti gli agenti.
+Contiene pattern distillati, non log grezzi: relazioni quantificate tra entità
+di mercato (SKU, manufacturer, stagioni, categorie), con confidenza e conteggio
+delle evidenze accumulate nel tempo.
+
+Due layer con dinamiche diverse:
+- Layer 1 — Conoscenza Strutturale: leggi di mercato confermate (decay lento, quasi permanenti)
+- Layer 2 — Conoscenza Tattica: pattern contingenti (decay per episodio se non confermati)
 
 Un'osservazione nasce sempre nel Layer 2.
-Se confermata per K episodi con alta confidenza → promossa a Layer 1.
+Se confermata per K episodi con alta confidenza → promossa automaticamente a Layer 1.
+
+Vedi anche:
+    agent_base_class.py — memoria a breve termine (privata, per-episodio, per-agente)
+    agent_memory.py — MemoryExtractor, bridge tra breve termine e lungo termine
 """
 
 import json

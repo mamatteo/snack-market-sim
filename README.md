@@ -56,9 +56,17 @@ A fine episodio, la conoscenza emersa viene distillata nel grafo di memoria, pro
 
 ## La memoria come protagonista
 
-Il componente più importante del sistema non è nessun singolo agente — è il grafo di memoria condiviso.
+Il componente più importante del sistema non è nessun singolo agente — è la struttura di memoria che gli agenti condividono e alimentano nel tempo. Ma "memoria" in questo sistema non è un concetto uniforme: esistono due tipi con orizzonti temporali e funzioni radicalmente diverse.
 
-La conoscenza è organizzata in due layer con dinamiche diverse:
+**Memoria a breve termine — privata, per-episodio.** Ogni agente mantiene una sliding window delle proprie ultime 10 decisioni settimanali (`short_term_memory` in `agent_base_class.py`), azzerata a inizio di ogni nuovo episodio. È la memoria di lavoro dell'agente: "la settimana scorsa ho proposto uno sconto del 20% su ChipsPremium e il retailer ha rifiutato — questa settimana provo diversamente". Privata — gli altri agenti non la vedono. Volatile — non sopravvive all'episodio.
+
+**Memoria a lungo termine — condivisa, cross-episodio.** Il `MarketMemoryGraph` (`memory/system_memory.py`) è un grafo di conoscenza che persiste su disco tra tutti gli episodi. Non contiene log grezzi di eventi, ma pattern distillati: relazioni quantificate tra entità di mercato (SKU, stagioni, manufacturer, categorie), ciascuna con confidenza e conteggio delle evidenze. È il patrimonio cognitivo del sistema — cresce episodio dopo episodio e cambia il comportamento di tutti gli agenti in modo misurabile.
+
+A collegare le due: il `MemoryExtractor` (`memory/agent_memory.py`), che a fine episodio analizza i risultati settimanali e le decisioni degli agenti, e deposita nuove osservazioni nel grafo a lungo termine. È il bridge tra ciò che è successo nell'episodio e la conoscenza che persiste.
+
+### La struttura del grafo a lungo termine
+
+La memoria a lungo termine è organizzata in due layer con dinamiche diverse:
 
 - **Layer 1 — Conoscenza Strutturale:** leggi di mercato confermate nel tempo. Decadono lentamente, quasi permanenti. *Es: "La domanda picca nelle settimane 24–35 (estate) e 48–52 (Natale)."*
 - **Layer 2 — Conoscenza Tattica:** pattern contingenti, comportamenti correnti degli agenti. Decadono per episodio se non confermati. *Es: "Manufacturer A tende a fare dumping nelle ultime settimane dell'episodio."*
@@ -69,24 +77,19 @@ Ogni osservazione nasce nel Layer 2. Se viene confermata con confidenza ≥ 75% 
 Promozione Layer 2 → Layer 1:  evidence_count ≥ 5  AND  confidence ≥ 0.75
 ```
 
-Questo significa che nei primi episodi gli agenti operano quasi al buio. Dopo 5–10 episodi iniziano a comparire leggi strutturali: lift promozionale per SKU, stagionalità confermata, pattern comportamentali dei competitor. Gli agenti leggono questa memoria ogni settimana — e le loro decisioni cambiano di conseguenza.
+Nei primi episodi gli agenti operano quasi al buio: la memoria a breve termine cattura solo le ultime mosse, e quella a lungo termine è ancora vuota. Dopo 5–10 episodi iniziano a comparire leggi strutturali: lift promozionale per SKU, stagionalità confermata, pattern comportamentali dei competitor. Gli agenti leggono entrambe le memorie ogni settimana — e le loro decisioni cambiano di conseguenza.
 
-### Memoria individuale e memoria sistemica
+### Memoria privata e memoria condivisa
 
-Nei sistemi multi-agente esiste una tensione di design fondamentale: la memoria deve essere privata a ciascun agente, o condivisa tra tutti?
+La memoria a breve termine è privata per design: ogni agente conosce le proprie mosse recenti, non quelle degli altri. La memoria a lungo termine — il grafo — è invece condivisa tra tutti.
 
-In un contesto competitivo puro — dove gli agenti si contendono risorse con incentivi contrapposti — la memoria privata è la scelta naturale: ogni agente accumula conoscenza proprietaria sulle proprie strategie, sulle reazioni dei competitor, sui propri KPI. Nessuno condivide informazioni che potrebbero essere usate contro di lui.
+Questa scelta non è ovvia. In un contesto competitivo puro, la memoria privata sarebbe naturale anche per il lungo periodo: ogni agente accumula conoscenza proprietaria sulle proprie strategie e sulle reazioni dei competitor, senza condividere nulla che potrebbe essere usato contro di lui. In un contesto cooperativo, invece, la memoria condivisa accelera l'apprendimento collettivo.
 
-In un contesto cooperativo, invece, la memoria condivisa accelera l'apprendimento collettivo: tutti gli agenti convergono più rapidamente su rappresentazioni accurate del mercato perché ogni osservazione beneficia l'intero sistema.
+Il caso GDO si colloca tra i due estremi. Manufacturer e retailer hanno incentivi parzialmente allineati (entrambi vogliono che la categoria cresca) ma anche contrapposti (la distribuzione del margine è una somma zero). Nella realtà, i pattern di mercato aggregati — stagionalità, lift promozionale per categoria, elasticità al prezzo — sono spesso commercialmente disponibili tramite provider come Nielsen o IRI, accessibili a tutti gli attori. Le strategie individuali, invece, restano proprietarie.
 
-Il caso d'uso GDO si colloca tra i due estremi. Manufacturer e retailer hanno incentivi parzialmente allineati (entrambi vogliono che la categoria cresca) ma anche interessi contrapposti (la distribuzione del margine è una somma zero). Nella realtà, i pattern di mercato aggregati — stagionalità, lift promozionale per categoria, elasticità al prezzo — sono spesso commercialmente disponibili tramite provider come Nielsen o IRI, accessibili a tutti gli attori. Le strategie individuali, invece, restano proprietarie.
+Il grafo condiviso riflette questa distinzione: ciascun agente alimenta la memoria con osservazioni di mercato pubblicamente osservabili, ma le proprie tattiche emergono dal ragionamento individuale e dalla memoria a breve termine privata, non dal grafo. La memoria breve cattura le strategie; il grafo cattura le leggi del mercato.
 
-Questo sistema riflette quella distinzione con due livelli di memoria separati:
-
-- **Memoria individuale** (`agents/agent_base_class.py`): ogni agente mantiene uno storico privato delle proprie decisioni settimanali — azioni proposte, risposte ricevute, pattern osservati. Questo storico non è visibile agli altri agenti, modellando la conoscenza proprietaria di ciascun player.
-- **Memoria sistemica** (`memory/system_memory.py`): il grafo di mercato è condiviso tra tutti gli agenti e contiene conoscenza osservabile pubblicamente — pattern di domanda, effetti promozionali, tendenze di categoria. Ogni agente legge e alimenta lo stesso grafo.
-
-La scelta di rendere il grafo condiviso è consapevolmente semplificativa: in un sistema orientato alla competizione pura, si avrebbe invece un grafo per agente, con osservazioni filtrate per prospettiva. Quella direzione è percorribile nell'architettura attuale e rappresenta un'estensione naturale per simulazioni più adversariali.
+La scelta di un grafo unico condiviso è consapevolmente semplificativa: in un sistema orientato alla competizione pura, si avrebbe invece un grafo per agente, con osservazioni filtrate per prospettiva. Quella direzione è percorribile nell'architettura attuale e rappresenta un'estensione naturale per simulazioni più adversariali.
 
 ---
 
@@ -132,11 +135,11 @@ A fine episodio il sistema stampa nel terminale i reward per agente (scala ~0–
 main.py
 src/
 ├── agents/
-│   ├── agent_base_class.py  # Classe base: chiamata LLM + parsing JSON + history privata
+│   ├── agent_base_class.py  # Classe base: chiamata LLM + parsing JSON + memoria a breve termine privata
 │   └── agents.py        # I 5 agenti
 ├── memory/
-│   ├── system_memory.py # MarketMemoryGraph — grafo di conoscenza condiviso
-│   └── agent_memory.py  # Distilla le decisioni dei singoli agenti in conoscenza sistemica
+│   ├── system_memory.py # MarketMemoryGraph — memoria a lungo termine condivisa (grafo Layer 1/Layer 2)
+│   └── agent_memory.py  # MemoryExtractor — bridge tra breve termine e lungo termine
 ├── orchestrator/
 │   └── graph.py         # Orchestratore LangGraph — ciclo settimanale
 └── world/

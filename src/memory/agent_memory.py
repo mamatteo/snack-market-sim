@@ -1,8 +1,15 @@
 """
-Memory Extractor — distilla conoscenza dagli episodi nel grafo di memoria.
+MemoryExtractor — bridge tra memoria a breve termine e memoria a lungo termine.
 
-Questo è il modulo che implementa il Principio 4 (Compound Intelligence):
-ogni episodio deposita conoscenza strutturata nel grafo condiviso.
+A fine episodio, analizza i risultati settimanali e le decisioni degli agenti
+(breve termine) e deposita pattern strutturati nel MarketMemoryGraph (lungo termine).
+
+È il meccanismo che implementa il Principio 4 (Compound Intelligence): ogni episodio
+trasforma osservazioni effimere in conoscenza persistente condivisa tra tutti gli agenti.
+
+Flusso:
+    episode_results + agent_decisions  →  MemoryExtractor  →  MarketMemoryGraph
+    (breve termine, per-episodio)          (distillazione)     (lungo termine, cross-episodio)
 """
 
 from src.world.market_simulator import MarketSimulator, WeeklyResult, SEASONALITY, SKUS
