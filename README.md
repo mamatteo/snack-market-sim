@@ -56,7 +56,7 @@ A fine episodio, la conoscenza emersa viene distillata nel grafo di memoria, pro
 
 ## Calibrazione del sistema
 
-Prima di portare questo sistema in produzione su un mercato reale, è necessario raccogliere i parametri che caratterizzano quel mercato specifico. Questa sezione elenca le domande da porre al cliente e il punto esatto del codice dove ciascuna risposta si traduce in configurazione.
+Ogni mercato ha le proprie leggi. Questa sezione mappa le domande tipiche di una raccolta requisiti ai parametri del sistema — per trasformare la simulazione generica in un modello fedele a un contesto specifico.
 
 Tutti i parametri numerici sono centralizzati in `config.py` (root del progetto) — l'unico file da editare per ricalibrate la simulazione. Due elementi fanno eccezione per ragioni strutturali e si configurano direttamente in `world/market_simulator.py`: il catalogo SKU (`SKUS`) e il profilo di stagionalità (`_build_seasonality()`).
 
