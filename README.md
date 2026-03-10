@@ -1,244 +1,244 @@
 # Agentic Category Management
 
-Le promozioni trade rappresentano in media il 15–25% del fatturato dei manufacturer di largo consumo e costituiscono la principale voce di costo dopo il costo del venduto. Eppure la loro pianificazione avviene ancora in buona parte attraverso negoziazioni bilaterali, fogli Excel e regole empiriche consolidate nel tempo.
+Trade promotions represent on average 15–25% of revenue for consumer goods manufacturers and are the largest cost item after cost of goods sold. Yet planning still happens largely through bilateral negotiations, Excel spreadsheets, and rules of thumb built up over time.
 
-Il problema è strutturalmente complesso. Manufacturer e retailer siedono al tavolo con obiettivi parzialmente allineati, entrambi vogliono che la categoria cresca, ma con incentivi contrapposti sulla distribuzione del margine. Il category manager del retailer deve bilanciare margine per metro lineare, rotazione dell'inventario, soddisfazione del consumatore e qualità della relazione con ciascun fornitore. Il trade promotion manager del manufacturer deve decidere quale SKU promuovere, con quale sconto, per quante settimane e con quale display fee, sapendo che ogni promozione genera un lift immediato ma anche un post-promo dip, e che i competitor osservano le sue mosse e reagiscono.
+The problem is structurally complex. Manufacturers and retailers sit at the table with partially aligned objectives — both want the category to grow, but with opposing incentives on margin distribution. The retailer's category manager must balance margin per linear meter, inventory turnover, consumer satisfaction, and the quality of relationships with each supplier. The manufacturer's trade promotion manager must decide which SKU to promote, with what discount, for how many weeks, and with what display fee — knowing that every promotion generates an immediate lift but also a post-promo dip, and that competitors are watching and will react.
 
-A complicare il quadro: l'informazione è asimmetrica (il manufacturer conosce i propri costi, il retailer conosce i dati di basket), le decisioni sono sequenziali e interdipendenti, e la conoscenza rilevante si accumula lentamente nel tempo, alcune dinamiche (la stagionalità) sono stabili, altre (le tattiche dei competitor) cambiano continuamente.
+Adding to the complexity: information is asymmetric (the manufacturer knows its own costs, the retailer knows basket data), decisions are sequential and interdependent, and relevant knowledge accumulates slowly over time — some dynamics (seasonality) are stable, others (competitor tactics) change continuously.
 
-Questo sistema modella esattamente quella dinamica. Cinque agenti LLM, tre manufacturer, un retailer, un consumer, negoziano assortimento, promozioni e spazio scaffale su un mercato snack italiano simulato. Non seguono script. Ognuno conosce i propri obiettivi e decide autonomamente come perseguirli, settimana dopo settimana, episodio dopo episodio.
+This system models exactly that dynamic. Five LLM agents — three manufacturers, one retailer, one consumer — negotiate assortment, promotions, and shelf space in a simulated Italian snack market. They follow no script. Each knows its own objectives and decides autonomously how to pursue them, week after week, episode after episode.
 
 ---
 
-## Principi di design
+## Design principles
 
-Il termine *agentico* viene usato in modo molto ampio. Spesso descrive sistemi in cui un LLM esegue una sequenza di step predefiniti, chiama API in ordine fisso, o segue un workflow che il programmatore ha già risolto, lasciando all'LLM solo il compito di riempire i campi. È un uso legittimo del termine in contesti di automazione, ma non cattura la dimensione più interessante dell'agentività: la capacità di un sistema di prendere decisioni non prescritte, adattare la strategia nel tempo, e generare comportamenti che il progettista non ha esplicitamente programmato.
+The term *agentic* is used very broadly. It often describes systems where an LLM executes a predefined sequence of steps, calls APIs in a fixed order, or follows a workflow the programmer has already resolved — leaving the LLM only to fill in the fields. This is a legitimate use of the term in automation contexts, but it does not capture the more interesting dimension of agenticity: the ability of a system to make unprescribed decisions, adapt strategy over time, and generate behaviors the designer did not explicitly program.
 
-Un test pratico: se rimuovessi l'LLM dal sistema e lo sostituissi con regole hardcodate, il comportamento cambierebbe in modo sostanziale? Se la risposta è no, se l'LLM sta solo formattando output o traducendo istruzioni in API call, allora il ragionamento non è davvero distribuito negli agenti.
+A practical test: if you removed the LLM from the system and replaced it with hardcoded rules, would the behavior change substantially? If the answer is no — if the LLM is just formatting output or translating instructions into API calls — then the reasoning is not truly distributed across the agents.
 
-In questo sistema la risposta è sì. Nessun agente sa in anticipo cosa proporrà la settimana prossima: dipende da cosa è successo quella corrente, da cosa ha osservato negli episodi precedenti, da come si è comportato il retailer, da cosa suggerisce il grafo di memoria. Il comportamento emerge dalla composizione di incentivi, contesto e ragionamento, non da uno script.
+In this system the answer is yes. No agent knows in advance what it will propose next week: it depends on what happened this week, what it observed in previous episodes, how the retailer behaved, and what the memory graph suggests. Behavior emerges from the composition of incentives, context, and reasoning — not from a script.
 
-Quattro principi rendono questo possibile:
+Four principles make this possible:
 
-| Principio | Come si applica |
+| Principle | How it applies |
 |---|---|
-| **Obiettivi, non istruzioni** | I system prompt definiscono chi è ogni agente e cosa vuole. Mai come ottenerlo. Il ragionamento appartiene agli agenti. |
-| **Contesto ricco, non prescrittivo** | Ogni settimana gli agenti ricevono lo stato del mercato e la memoria condivisa. Decidono loro. Nessuna regola hardcodata. |
-| **Memoria attiva e verificabile** | Un grafo di conoscenza persiste tra gli episodi e cambia il comportamento degli agenti in modo misurabile. |
-| **Intelligenza sistemica** | Il sistema impara come sistema, non come somma di agenti isolati. Ogni interazione deposita conoscenza che tutti gli agenti possono usare. |
+| **Goals, not instructions** | System prompts define who each agent is and what it wants. Never how to get it. The reasoning belongs to the agents. |
+| **Rich, non-prescriptive context** | Every week agents receive market state and shared memory. They decide. No hardcoded rules. |
+| **Active, verifiable memory** | A knowledge graph persists across episodes and measurably changes agent behavior. |
+| **Systemic intelligence** | The system learns as a system, not as a sum of isolated agents. Every interaction deposits knowledge that all agents can use. |
 
 ---
 
-## Come funziona
+## How it works
 
-Ogni **episodio** è una sequenza di settimane simulate. A ogni settimana, gli agenti agiscono in ordine:
+Each **episode** is a sequence of simulated weeks. Each week, agents act in order:
 
 ```
-Consumer → Manufacturers → Retailer → World Step → verifica fine episodio
+Consumer → Manufacturers → Retailer → World Step → check episode end
     ↑_________________________________________________________________|
 ```
 
-Il **Consumer** aggiorna i trend di domanda (preferenza healthy, sensibilità al prezzo). I **Manufacturer** decidono se proporre promozioni al retailer, quale SKU, che sconto, che display fee. Il **Retailer** valuta le proposte: può accettare, rifiutare, o fare un counter-offer. Il **World Engine** calcola domanda, fatturato e margini, e avanza di una settimana.
+The **Consumer** updates demand trends (healthy preference, price sensitivity). **Manufacturers** decide whether to propose promotions to the retailer — which SKU, what discount, what display fee. The **Retailer** evaluates proposals: it can accept, reject, or make a counter-offer. The **World Engine** computes demand, revenue, and margins, and advances by one week.
 
-A fine episodio, la conoscenza emersa viene distillata nel grafo di memoria, pronta per gli episodi successivi.
+At the end of each episode, the knowledge accumulated is distilled into the memory graph, ready for subsequent episodes.
 
-### Gli agenti
+### The agents
 
-| Agente | Ruolo | KPI |
+| Agent | Role | KPIs |
 |---|---|---|
-| **Manufacturer A** | Brand premium — ChipsPremium, CrackersPremium | Revenue, margine, ROI promozionale |
-| **Manufacturer B** | Brand mass market — 3 SKU chips e crackers | Volume, revenue, margine |
-| **Manufacturer C** | Challenger healthy — ProteinBar, RiceCakes Bio | Penetrazione, allineamento ai trend |
-| **Retailer** | Category Manager GDO | Margine per metro lineare, volume, rotazione |
-| **Consumer** | Domanda aggregata + segnale di trend | Rappresentazione fedele del comportamento di mercato |
+| **Manufacturer A** | Premium brand — ChipsPremium, CrackersPremium | Revenue, margin, promotional ROI |
+| **Manufacturer B** | Mass market brand — 3 chips and crackers SKUs | Volume, revenue, margin |
+| **Manufacturer C** | Healthy challenger — ProteinBar, RiceCakes Bio | Penetration, trend alignment |
+| **Retailer** | GDO Category Manager | Margin per linear meter, volume, turnover |
+| **Consumer** | Aggregate demand + trend signal | Faithful representation of market behavior |
 
 ---
 
-## Calibrazione del sistema
+## System calibration
 
-Ogni mercato ha le proprie leggi. Questa sezione mappa le domande tipiche di una raccolta requisiti ai parametri del sistema, per trasformare la simulazione generica in un modello fedele a un contesto specifico.
+Every market has its own laws. This section maps the typical questions from a requirements gathering to system parameters, to transform the generic simulation into a model faithful to a specific context.
 
-Tutti i parametri numerici sono centralizzati in `config.py` (root del progetto), l'unico file da editare per ricalibrate la simulazione. Due elementi fanno eccezione per ragioni strutturali e si configurano direttamente in `world/market_simulator.py`: il catalogo SKU (`SKUS`) e il profilo di stagionalità (`_build_seasonality()`).
+All numerical parameters are centralized in `config.py` (project root), the only file to edit to recalibrate the simulation. Two elements are exceptions for structural reasons and are configured directly in `world/market_simulator.py`: the SKU catalog (`SKUS`) and the seasonality profile (`_build_seasonality()`).
 
-### Struttura del mercato
+### Market structure
 
-**Domande al cliente:** Quanti brand ci sono nella categoria? Quanti SKU per brand? Qual è la struttura competitiva (premium vs mass vs private label vs challenger)? Quali sono i volumi di riferimento per ciascun prodotto?
+**Questions for the client:** How many brands are in the category? How many SKUs per brand? What is the competitive structure (premium vs mass vs private label vs challenger)? What are the reference volumes for each product?
 
-Il catalogo SKU è definito nel dizionario `SKUS` in `world/market_simulator.py`. Per ogni SKU si configurano:
+The SKU catalog is defined in the `SKUS` dictionary in `world/market_simulator.py`. For each SKU:
 
-| Campo | Significato |
+| Field | Meaning |
 |---|---|
-| `base_demand` | Volume settimanale di riferimento in assenza di perturbazioni |
-| `manufacturer_cost` | Costo di produzione per unità |
-| `manufacturer_list_price` | Prezzo di listino manufacturer → retailer |
-| `retailer_list_price` | Prezzo al consumatore in assenza di promozioni |
-| `manufacturer_id` | A quale agente appartiene lo SKU (`mfr_a`, `mfr_b`, `mfr_c`, `retailer`) |
-| `subcategory` | `chips` \| `crackers` \| `healthy` — determina l'impatto del trend consumer |
+| `base_demand` | Reference weekly volume in the absence of perturbations |
+| `manufacturer_cost` | Production cost per unit |
+| `manufacturer_list_price` | Manufacturer → retailer list price |
+| `retailer_list_price` | Consumer price in the absence of promotions |
+| `manufacturer_id` | Which agent the SKU belongs to (`mfr_a`, `mfr_b`, `mfr_c`, `retailer`) |
+| `subcategory` | `chips` \| `crackers` \| `healthy` — determines the impact of the consumer trend |
 
-La private label del retailer è configurabile allo stesso modo: `manufacturer_id = "retailer"` e `manufacturer_list_price` uguale al costo (margine diretto al consumatore).
+The retailer's private label is configurable in the same way: `manufacturer_id = "retailer"` and `manufacturer_list_price` equal to cost (direct margin to consumer).
 
-### Stagionalità
+### Seasonality
 
-**Domande al cliente:** Quando sono i picchi di vendita in questa categoria? Qual è la magnitudine? Ci sono cali stagionali marcati?
+**Questions for the client:** When are the sales peaks in this category? What is the magnitude? Are there marked seasonal declines?
 
-La stagionalità è definita in `_build_seasonality()` in `world/market_simulator.py`. Produce un array di 52 moltiplicatori settimanali e si adatta modificando i range di settimane e i coefficienti:
+Seasonality is defined in `_build_seasonality()` in `world/market_simulator.py`. It produces an array of 52 weekly multipliers and is adapted by modifying the week ranges and coefficients:
 
 ```python
 def _build_seasonality() -> np.ndarray:
     s = np.ones(52)
-    s[23:35] *= 1.25   # estate (settimane 24–35): +25%
-    s[47:52] *= 1.35   # natale (settimane 48–52): +35%
-    s[0:2]   *= 1.20   # capodanno: +20%
-    s[2:6]   *= 0.80   # gennaio post-feste: −20%
+    s[23:35] *= 1.25   # summer (weeks 24–35): +25%
+    s[47:52] *= 1.35   # christmas (weeks 48–52): +35%
+    s[0:2]   *= 1.20   # new year: +20%
+    s[2:6]   *= 0.80   # post-holiday january: −20%
     return s
 ```
 
-Per una categoria con picco back-to-school e nessun effetto estivo, si modificano semplicemente i range e i moltiplicatori.
+For a category with a back-to-school peak and no summer effect, simply modify the ranges and multipliers.
 
-### Meccaniche promozionali
+### Promotional mechanics
 
-**Domande al cliente:** Qual è il lift tipico di una promozione in questa categoria? Un'esposizione preferenziale (display, testa di gondola) genera incremento misurabile? Quanto dura il calo post-promo e con che intensità?
-
-```python
-# config.py
-PROMO_LIFT_BASE        = 1.8   # lift base sulla domanda con promo attiva (×1.8 = +80%)
-DISPLAY_FEE_THRESHOLD  = 400   # soglia display fee (€) oltre cui scatta il bonus
-DISPLAY_FEE_LIFT_BONUS = 0.3   # bonus lift per posizionamento premium
-PROMO_LIFT_CAP         = 3.0   # lift massimo consentito
-POST_PROMO_DIP_FACTOR  = 0.20  # calo domanda post-promozione (−20%)
-POST_PROMO_DIP_WEEKS   = 3     # durata del post-promo dip in settimane
-```
-
-### Comportamento consumer
-
-**Domande al cliente:** Il segmento healthy è in crescita nel vostro mercato? Con che intensità i trend di consumo influenzano gli acquisti? I consumatori sono price-elastic in questa categoria?
+**Questions for the client:** What is the typical lift from a promotion in this category? Does preferential placement (display, end-cap) generate a measurable increase? How long does the post-promo dip last and with what intensity?
 
 ```python
 # config.py
-HEALTHY_TREND_SENSITIVITY = 0.3   # +1 di healthy_preference → +30% domanda prodotti healthy
-PRICE_SENSITIVITY_IMPACT  = 0.1   # +1 di price_sensitivity  → −10% domanda complessiva
-DEMAND_NOISE_SIGMA        = 0.05  # volatilità settimanale (σ del rumore gaussiano)
+PROMO_LIFT_BASE        = 1.8   # base demand lift with active promo (×1.8 = +80%)
+DISPLAY_FEE_THRESHOLD  = 400   # display fee threshold (€) above which bonus activates
+DISPLAY_FEE_LIFT_BONUS = 0.3   # lift bonus for premium shelf positioning
+PROMO_LIFT_CAP         = 3.0   # maximum allowed lift
+POST_PROMO_DIP_FACTOR  = 0.20  # post-promotion demand drop (−20%)
+POST_PROMO_DIP_WEEKS   = 3     # duration of the post-promo dip in weeks
 ```
 
-### Struttura finanziaria
+### Consumer behavior
 
-**Domande al cliente:** Qual è il margine lordo tipico del retailer su prodotti in promozione? Come funziona la display fee, è flat o percentuale?
+**Questions for the client:** Is the healthy segment growing in your market? How strongly do consumption trends influence purchases? Are consumers price-elastic in this category?
 
 ```python
 # config.py
-RETAILER_MARGIN_ON_PROMO = 0.30  # margine retailer sul transfer price ridotto (~30% in GDO Italia)
+HEALTHY_TREND_SENSITIVITY = 0.3   # +1 healthy_preference → +30% demand for healthy products
+PRICE_SENSITIVITY_IMPACT  = 0.1   # +1 price_sensitivity  → −10% overall demand
+DEMAND_NOISE_SIGMA        = 0.05  # weekly volatility (σ of Gaussian noise)
 ```
 
-I costi e i prezzi di listino di ciascun SKU si configurano direttamente in `SKUS` (`world/market_simulator.py`).
+### Financial structure
 
-### KPI e reward
-
-**Domande al cliente:** Cosa misura il successo per ciascun attore? Revenue, margine, ROI promozionale? Quanto pesa la performance sistemica (categoria) rispetto a quella individuale? Esiste un accordo di joint business planning che premia la crescita condivisa?
+**Questions for the client:** What is the retailer's typical gross margin on promoted products? How does the display fee work — flat or percentage?
 
 ```python
-# config.py — pesi reward manufacturer (revenue, margine, ROI promo)
+# config.py
+RETAILER_MARGIN_ON_PROMO = 0.30  # retailer margin on reduced transfer price (~30% in Italian GDO)
+```
+
+Costs and list prices for each SKU are configured directly in `SKUS` (`world/market_simulator.py`).
+
+### KPIs and reward
+
+**Questions for the client:** What measures success for each actor? Revenue, margin, promotional ROI? How much does systemic performance (category) weigh against individual performance? Is there a joint business planning agreement that rewards shared growth?
+
+```python
+# config.py — manufacturer reward weights (revenue, margin, promo ROI)
 MFR_REWARD_WEIGHT_REVENUE   = 0.40
 MFR_REWARD_WEIGHT_MARGIN    = 0.30
 MFR_REWARD_WEIGHT_PROMO_ROI = 0.30
 
-# pesi reward retailer (margine categoria, volume, rotazione)
+# retailer reward weights (category margin, volume, turnover)
 RTL_REWARD_WEIGHT_MARGIN = 0.40
 RTL_REWARD_WEIGHT_VOLUME = 0.30
 RTL_REWARD_WEIGHT_TURNS  = 0.30
 
-# blend individuale/sistemico nel reward finale
-SYSTEM_BLEND_RATIO = 0.40  # 0.0 = puramente competitivo · 1.0 = puramente cooperativo
+# individual/systemic blend in the final reward
+SYSTEM_BLEND_RATIO = 0.40  # 0.0 = purely competitive · 1.0 = purely cooperative
 ```
 
-I threshold di normalizzazione (`MFR_REVENUE_NORM`, `RTL_MARGIN_NORM`, ecc.) determinano la scala dei KPI e vanno adattati alle dimensioni reali del mercato simulato.
+Normalization thresholds (`MFR_REVENUE_NORM`, `RTL_MARGIN_NORM`, etc.) determine the KPI scale and must be adapted to the real dimensions of the simulated market.
 
-### Velocità di apprendimento
+### Learning speed
 
-**Domande al cliente:** Quante stagioni devono confermare un pattern prima che diventi una "legge di mercato"? Con che velocità devono decadere le osservazioni tattiche non confermate?
+**Questions for the client:** How many seasons must confirm a pattern before it becomes a "market law"? How quickly should unconfirmed tactical observations decay?
 
 ```python
 # config.py
-MEMORY_PROMOTION_EVIDENCE   = 5     # episodi necessari per Layer 2 → Layer 1
-MEMORY_PROMOTION_CONFIDENCE = 0.75  # confidenza minima per la promozione
-MEMORY_CONFIRMATION_BOOST   = 0.08  # incremento confidenza per ogni conferma
-MEMORY_CONTRADICTION_DECAY  = 0.15  # decremento confidenza per ogni contraddizione
-MEMORY_TACTICAL_DECAY       = 0.05  # decay per episodio degli archi tattici non confermati
+MEMORY_PROMOTION_EVIDENCE   = 5     # episodes required for Layer 2 → Layer 1
+MEMORY_PROMOTION_CONFIDENCE = 0.75  # minimum confidence for promotion
+MEMORY_CONFIRMATION_BOOST   = 0.08  # confidence increment per confirmation
+MEMORY_CONTRADICTION_DECAY  = 0.15  # confidence decrement per contradiction
+MEMORY_TACTICAL_DECAY       = 0.05  # per-episode decay for unconfirmed tactical edges
 ```
 
-Con i valori di default le prime leggi strutturali compaiono dopo 5–10 episodi. Ridurre `MEMORY_PROMOTION_EVIDENCE` accelera l'apprendimento; aumentare `MEMORY_TACTICAL_DECAY` rende il sistema più reattivo ai cambiamenti di mercato.
+With default values, the first structural laws appear after 5–10 episodes. Reducing `MEMORY_PROMOTION_EVIDENCE` accelerates learning; increasing `MEMORY_TACTICAL_DECAY` makes the system more reactive to market changes.
 
-### Orizzonte della simulazione
+### Simulation horizon
 
-**Domande al cliente:** Quante settimane per scenario? Un mese, un trimestre, un anno? Quale livello di qualità e velocità LLM è accettabile?
+**Questions for the client:** How many weeks per scenario? One month, one quarter, one year? What level of LLM quality and speed is acceptable?
 
 ```python
 # config.py
-EPISODE_LENGTH_WEEKS    = 4          # settimane per episodio (4 = mensile, 13 = trimestrale, 52 = annuale)
-SHORT_TERM_MEMORY_SIZE  = 10         # dimensione sliding window memoria a breve termine
-SHORT_TERM_CONTEXT_SIZE = 5          # voci incluse nel prompt dell'agente
-DEFAULT_MODEL           = "qwen3:8b" # modello LLM di default
+EPISODE_LENGTH_WEEKS    = 4          # weeks per episode (4 = monthly, 13 = quarterly, 52 = annual)
+SHORT_TERM_MEMORY_SIZE  = 10         # sliding window size for short-term memory
+SHORT_TERM_CONTEXT_SIZE = 5          # entries included in the agent prompt
+DEFAULT_MODEL           = "qwen3:8b" # default LLM model
 ```
 
 ---
 
-## La memoria come protagonista
+## Memory as the core component
 
-Il componente più importante del sistema non è nessun singolo agente, è la struttura di memoria che gli agenti condividono e alimentano nel tempo. Ma "memoria" non è un concetto uniforme: esistono due tipi con orizzonti temporali, funzioni e logiche di accesso radicalmente diverse, e la scelta di progettarli in modo asimmetrico non è arbitraria.
+The most important component of the system is not any single agent — it is the memory structure that agents share and feed over time. But "memory" is not a uniform concept: there are two types with radically different time horizons, functions, and access logic, and the choice to design them asymmetrically is not arbitrary.
 
-**Memoria a breve termine, privata, per-episodio.** Ogni agente mantiene una sliding window delle proprie ultime 10 decisioni settimanali (`short_term_memory` in `agent_base_class.py`), azzerata a inizio di ogni nuovo episodio. È la memoria di lavoro: "la settimana scorsa ho proposto uno sconto del 20% su ChipsPremium e il retailer ha rifiutato, questa settimana cambio tattica". È privata perché in un mercato competitivo ogni agente custodisce le proprie mosse. Un manufacturer non condivide con i competitor quanto sta scontando, né il retailer espone la propria funzione di preferenza a chi ci negozia contro. La breve termine cattura le strategie, ed è giusto che resti opaca agli altri.
+**Short-term memory, private, per-episode.** Each agent maintains a sliding window of its last 10 weekly decisions (`short_term_memory` in `agent_base_class.py`), reset at the start of each new episode. It is working memory: "last week I proposed a 20% discount on ChipsPremium and the retailer refused, this week I'll change tactics." It is private because in a competitive market each agent guards its own moves. A manufacturer does not share with competitors how much it is discounting, nor does the retailer expose its preference function to those negotiating against it. Short-term memory captures strategies, and it is right that it remains opaque to others.
 
-**Memoria a lungo termine, condivisa, cross-episodio.** Il `MarketMemoryGraph` (`memory/system_memory.py`) è un grafo di conoscenza che persiste su disco tra tutti gli episodi. Non contiene log grezzi di eventi, ma pattern distillati: relazioni quantificate tra entità di mercato (SKU, stagioni, manufacturer, categorie), ciascuna con confidenza e conteggio delle evidenze accumulate nel tempo. È il patrimonio cognitivo del sistema, cresce episodio dopo episodio. Qui la scelta è opposta rispetto alla breve termine: il grafo è condiviso tra tutti gli agenti. La ragione è contestuale. Nella GDO reale, i pattern di mercato aggregati, stagionalità, lift promozionale per categoria, elasticità al prezzo, sono spesso commercialmente disponibili tramite provider come Nielsen o IRI, accessibili a tutti gli attori. Non sono segreti: sono la conoscenza di sfondo su cui tutti ragionano. Le strategie individuali restano proprietarie; le leggi del mercato no. Il grafo modella esattamente questa distinzione: ogni agente vi deposita osservazioni pubblicamente osservabili, non le proprie tattiche.
+**Long-term memory, shared, cross-episode.** The `MarketMemoryGraph` (`memory/system_memory.py`) is a knowledge graph that persists on disk across all episodes. It does not contain raw event logs, but distilled patterns: quantified relationships between market entities (SKUs, seasons, manufacturers, categories), each with confidence and evidence count accumulated over time. It is the cognitive patrimony of the system, growing episode after episode. Here the choice is the opposite of short-term memory: the graph is shared across all agents. The reason is contextual. In real GDO, aggregate market patterns — seasonality, promotional lift per category, price elasticity — are often commercially available through providers like Nielsen or IRI, accessible to all actors. They are not secrets: they are the background knowledge on which everyone reasons. Individual strategies remain proprietary; market laws do not. The graph models exactly this distinction: each agent deposits publicly observable observations, not its own tactics.
 
-A collegare le due: il `MemoryExtractor` (`memory/agent_memory.py`), che a fine episodio analizza i risultati settimanali e le decisioni degli agenti, e deposita nuove osservazioni nel grafo a lungo termine. È il bridge tra ciò che è successo nell'episodio e la conoscenza che persiste.
+Connecting the two: the `MemoryExtractor` (`memory/agent_memory.py`), which at the end of each episode analyzes weekly results and agent decisions, and deposits new observations into the long-term graph. It is the bridge between what happened in the episode and the knowledge that persists.
 
-### La struttura del grafo a lungo termine
+### The structure of the long-term graph
 
-La memoria a lungo termine è organizzata in due layer con dinamiche diverse:
+Long-term memory is organized in two layers with different dynamics:
 
-- **Layer 1 — Conoscenza Strutturale:** leggi di mercato confermate nel tempo. Decadono lentamente, quasi permanenti. *Es: "La domanda picca nelle settimane 24–35 (estate) e 48–52 (Natale)."*
-- **Layer 2 — Conoscenza Tattica:** pattern contingenti, comportamenti correnti degli agenti. Decadono per episodio se non confermati. *Es: "Manufacturer A tende a fare dumping nelle ultime settimane dell'episodio."*
+- **Layer 1 — Structural Knowledge:** market laws confirmed over time. They decay slowly, nearly permanent. *E.g.: "Demand peaks in weeks 24–35 (summer) and 48–52 (Christmas)."*
+- **Layer 2 — Tactical Knowledge:** contingent patterns, current agent behaviors. They decay per episode if not confirmed. *E.g.: "Manufacturer A tends to dump prices in the last weeks of the episode."*
 
-Ogni osservazione nasce nel Layer 2. Se viene confermata con confidenza ≥ 75% per almeno 5 episodi, viene **promossa automaticamente al Layer 1**. Il sistema decide autonomamente cosa diventa legge di mercato e cosa rimane contingente.
+Every observation is born in Layer 2. If confirmed with confidence ≥ 75% for at least 5 episodes, it is **automatically promoted to Layer 1**. The system autonomously decides what becomes a market law and what remains contingent.
 
 ```
-Promozione Layer 2 → Layer 1:  evidence_count ≥ 5  AND  confidence ≥ 0.75
+Promotion Layer 2 → Layer 1:  evidence_count ≥ 5  AND  confidence ≥ 0.75
 ```
 
-Nei primi episodi gli agenti operano quasi al buio: la breve termine cattura solo le ultime mosse, la lunga è ancora vuota. Dopo 5–10 episodi iniziano a comparire leggi strutturali: lift promozionale per SKU, stagionalità confermata, pattern comportamentali dei competitor. Gli agenti leggono entrambe le memorie ogni settimana, e le loro decisioni cambiano di conseguenza. È questo accumulo che trasforma una sequenza di negoziazioni isolate in qualcosa che assomiglia all'apprendimento.
+In early episodes agents operate nearly blind: short-term memory captures only recent moves, long-term is still empty. After 5–10 episodes structural laws start to appear: promotional lift per SKU, confirmed seasonality, competitor behavioral patterns. Agents read both memories every week, and their decisions change accordingly. It is this accumulation that transforms a sequence of isolated negotiations into something resembling learning.
 
-La scelta di un grafo unico condiviso è consapevolmente semplificativa: in un sistema orientato alla competizione pura, si avrebbe un grafo per agente, con osservazioni filtrate per prospettiva. Quella direzione è percorribile nell'architettura attuale e rappresenta un'estensione naturale per simulazioni più adversariali.
+The choice of a single shared graph is consciously simplistic: in a system oriented toward pure competition, one would have a graph per agent with observations filtered by perspective. That direction is viable in the current architecture and represents a natural extension for more adversarial simulations.
 
 ---
 
-## Modello di mercato
+## Market model
 
-Il comportamento di mercato è modellato dalla classe `MarketSimulator` (`world/market_simulator.py`), che gestisce 8 SKU in 3 sottocategorie (chips, crackers, healthy) e calcola, settimana per settimana, domanda, ricavi e margini per ogni attore. È il layer di realtà su cui gli agenti esercitano le proprie decisioni, e la fonte dei dati che il `MemoryExtractor` distilla nel grafo a lungo termine.
+Market behavior is modeled by the `MarketSimulator` class (`world/market_simulator.py`), which manages 8 SKUs across 3 subcategories (chips, crackers, healthy) and computes, week by week, demand, revenue, and margins for each actor. It is the reality layer on which agents exercise their decisions, and the source of the data that the `MemoryExtractor` distills into the long-term graph.
 
-### Domanda moltiplicativa
+### Multiplicative demand
 
-La domanda di ogni SKU in ogni settimana è il prodotto di sei fattori indipendenti:
+The demand for each SKU in each week is the product of six independent factors:
 
 ```
-unità = domanda_base × stagionalità × trend_consumer × lift_promozionale × dip_post_promo × rumore
+units = base_demand × seasonality × consumer_trend × promo_lift × post_promo_dip × noise
 ```
 
-**Domanda base** — la vendita attesa in condizioni neutrali, specifica per SKU. Riflette il posizionamento: il mass market (ChipsMass) parte da 200 unità/settimana, il premium (ChipsPremium) da 120, i prodotti healthy da 60–70. La private label del retailer si colloca a 180.
+**Base demand** — expected sales under neutral conditions, specific to each SKU. Reflects positioning: mass market (ChipsMass) starts at 200 units/week, premium (ChipsPremium) at 120, healthy products at 60–70. The retailer's private label sits at 180.
 
-**Stagionalità** — un array di 52 moltiplicatori settimanali, costruito una volta sola in `_build_seasonality()` e applicato deterministicamente a tutti gli SKU. Riflette i picchi reali della GDO italiana: +25% estate (settimane 24–35), +35% Natale (settimane 48–52), +20% a cavallo d'anno, −20% nelle settimane 3–6 (calo post-feste). La stagionalità è uguale per tutti gli SKU, è la struttura del calendario, non una caratteristica di prodotto.
+**Seasonality** — an array of 52 weekly multipliers, built once in `_build_seasonality()` and applied deterministically to all SKUs. Reflects real Italian GDO peaks: +25% summer (weeks 24–35), +35% Christmas (weeks 48–52), +20% year-end, −20% in weeks 3–6 (post-holiday decline). Seasonality is the same for all SKUs — it is the calendar structure, not a product characteristic.
 
-**Trend consumer** — due parametri continui in [-1.0, +1.0] aggiornati ogni settimana dall'agente Consumer: `healthy_preference` e `price_sensitivity`. La preferenza healthy amplifica o smorza la domanda degli SKU in sottocategoria healthy (fino a ±30%). La sensibilità al prezzo riduce la domanda complessiva quando alta (fino a −10%), modellando il fenomeno per cui i consumatori molto attenti al prezzo rinviano gli acquisti in assenza di promozioni.
+**Consumer trend** — two continuous parameters in [-1.0, +1.0] updated each week by the Consumer agent: `healthy_preference` and `price_sensitivity`. Healthy preference amplifies or dampens demand for healthy subcategory SKUs (up to ±30%). Price sensitivity reduces overall demand when high (up to −10%), modeling the phenomenon where price-conscious consumers delay purchases in the absence of promotions.
 
-**Lift promozionale** — quando una promozione è attiva, la domanda sale. Il lift base è ×1.8, incrementato proporzionalmente allo sconto applicato. Se il manufacturer ha pagato una display fee superiore a 400€, si aggiunge un ulteriore +0.3× per il posizionamento premium in scaffale. Il lift è cappato a ×3.0 per evitare effetti irrealistici. Con uno sconto del 25% e display fee 500€, il lift tipico è intorno a ×2.3.
+**Promotional lift** — when a promotion is active, demand rises. Base lift is ×1.8, increased proportionally to the applied discount. If the manufacturer has paid a display fee above €400, an additional +0.3× is added for premium shelf positioning. Lift is capped at ×3.0 to avoid unrealistic effects. With a 25% discount and €500 display fee, the typical lift is around ×2.3.
 
-**Post-promo dip** — la contrazione della domanda nelle 3 settimane successive alla fine di una promozione (−20%). Modella il fenomeno reale di pantry loading: i consumatori si sono riforniti durante la promo e nei giorni successivi acquistano meno. Il simulatore traccia automaticamente le SKU in stato di dip tramite `post_promo_dip_tracker`, senza che gli agenti debbano gestirlo esplicitamente.
+**Post-promo dip** — the demand contraction in the 3 weeks following the end of a promotion (−20%). Models the real pantry-loading phenomenon: consumers stocked up during the promo and buy less in subsequent days. The simulator automatically tracks SKUs in dip state via `post_promo_dip_tracker`, without agents needing to manage it explicitly.
 
-**Rumore** — perturbazione gaussiana (μ=1.0, σ=0.05) che introduce variabilità realistica. Previene che il sistema converga su pattern deterministici identici e rende ogni episodio distinto.
+**Noise** — Gaussian perturbation (μ=1.0, σ=0.05) that introduces realistic variability. Prevents the system from converging on identical deterministic patterns and makes each episode distinct.
 
-### Struttura dei prezzi e dei margini
+### Price and margin structure
 
-Ogni SKU ha tre prezzi: costo di produzione, prezzo di listino manufacturer→retailer, e prezzo al consumatore di base. Quando una promozione è attiva, il transfer price si riduce della percentuale di sconto concordata. Il retailer calcola il proprio prezzo al consumatore mantenendo un margine del ~30% sul transfer price ridotto. La display fee agisce come trasferimento diretto: il manufacturer la paga, il retailer la riceve, indipendentemente dal volume venduto.
+Each SKU has three prices: production cost, manufacturer→retailer list price, and base consumer price. When a promotion is active, the transfer price is reduced by the agreed discount percentage. The retailer calculates its consumer price maintaining a margin of ~30% on the reduced transfer price. The display fee acts as a direct transfer: the manufacturer pays it, the retailer receives it, regardless of volume sold.
 
-| SKU | Mfr | Sottocategoria | Domanda base | Costo prod. | Prezzo MFR→RTL | Prezzo consumatore |
+| SKU | Mfr | Subcategory | Base demand | Prod. cost | MFR→RTL price | Consumer price |
 |---|---|---|---|---|---|---|
 | ChipsPremium 150g | mfr_a | chips | 120 | €0.80 | €1.50 | €2.20 |
 | CrackersPremium 200g | mfr_a | crackers | 80 | €0.60 | €1.20 | €1.80 |
@@ -249,51 +249,127 @@ Ogni SKU ha tre prezzi: costo di produzione, prezzo di listino manufacturer→re
 | RiceCakes Bio 100g | mfr_c | healthy | 70 | €0.90 | €1.80 | €2.90 |
 | PrivateLabel Chips | retailer | chips | 180 | €0.40 | — | €1.20 |
 
-La private label è sempre listata e non soggetta a negoziazione. Il suo costo di produzione coincide con il transfer price (il retailer produce e distribuisce direttamente), quindi il margine è interamente la differenza tra prezzo al consumatore e costo. Non è un agente ma un benchmark di pressione competitiva perenne sulla sottocategoria chips, la sua presenza costringe i manufacturer a giustificare il differenziale di prezzo con qualità percepita o promozioni.
+The private label is always listed and not subject to negotiation. Its production cost equals the transfer price (the retailer produces and distributes directly), so the margin is entirely the difference between consumer price and cost. It is not an agent but a benchmark of perennial competitive pressure on the chips subcategory — its presence forces manufacturers to justify the price differential with perceived quality or promotions.
 
-### Reward e incentivi
+### Reward and incentives
 
-A fine episodio, `compute_rewards()` calcola il reward per ogni agente a partire dai KPI accumulati. Per i manufacturer: combinazione di revenue normalizzata (40%), margine normalizzato (30%) e ROI promozionale (30%). Per il retailer: margine di categoria (40%), volume totale (30%), rotazione dell'inventario (30%).
+At the end of each episode, `compute_rewards()` calculates the reward for each agent from the accumulated KPIs. For manufacturers: a combination of normalized revenue (40%), normalized margin (30%), and promotional ROI (30%). For the retailer: category margin (40%), total volume (30%), inventory turnover (30%).
 
-Il reward finale è un **blend 60% individuale / 40% sistemico**: il KPI individuale viene mescolato con la media dei reward di tutti gli agenti. Questa scelta modella la dinamica di partnership tipica della GDO, in cui manufacturer e retailer hanno interesse alla salute dell'intera categoria, non solo alla propria quota, e impedisce che il sistema converga su strategie puramente avversariali dove un agente massimizza erodendo il valore degli altri.
+The final reward is a **60% individual / 40% systemic blend**: the individual KPI is mixed with the average reward of all agents. This choice models the partnership dynamic typical of GDO, where manufacturers and retailers have an interest in the health of the entire category, not just their own share — and prevents the system from converging on purely adversarial strategies where one agent maximizes by eroding value from others.
 
 ---
 
 ## Output
 
-| File | Contenuto |
+| File | Content |
 |---|---|
-| `results.json` | Reward per agente e nuova conoscenza strutturale per ogni episodio |
-| `output_data/knowledge_graph.json` | Grafo di memoria persistente — nodi, archi, confidenza, layer |
+| `results.json` | Reward per agent and new structural knowledge for each episode |
+| `output_data/knowledge_graph.json` | Persistent memory graph — nodes, edges, confidence, layer |
 
-A fine episodio il sistema stampa nel terminale i reward per agente (scala ~0–2, blend 60% individuale + 40% sistemico), la conoscenza strutturale accumulata, e le promozioni Layer 2 → Layer 1 avvenute in quell'episodio.
+At the end of each episode, the system prints to the terminal the rewards per agent (scale ~0–2, 60% individual + 40% systemic blend), the accumulated structural knowledge, and the Layer 2 → Layer 1 promotions that occurred in that episode.
 
-> I reward bassi nei primi episodi sono normali: i KPI sono normalizzati su base annuale, con poche settimane il numeratore è piccolo. Il comportamento diventa significativo dopo 5–10 episodi.
+> Low rewards in early episodes are normal: KPIs are normalized on an annual basis, so with few weeks the numerator is small. Behavior becomes meaningful after 5–10 episodes.
 
 ---
 
-## Struttura del progetto
+## Sample Results
+
+After 10 episodes (40 simulated weeks), a typical run produces the following outputs.
+
+### Terminal output — end of episode
+
+```
+Episode 10 complete — Week 40
+──────────────────────────────────────────────────────────
+Agent              Individual    Systemic     Final
+──────────────────────────────────────────────────────────
+Manufacturer A        1.42         1.21        1.33
+Manufacturer B        0.91         1.21        1.03
+Manufacturer C        1.58         1.21        1.43
+Retailer              1.26         1.21        1.24
+──────────────────────────────────────────────────────────
+
+Layer 2 → Layer 1 promotions this episode:
+  • ChipsPremium :: summer_demand_lift      confidence=0.81  evidence=6
+  • mfr_a :: end_of_episode_discount_push  confidence=0.77  evidence=5
+```
+
+Rewards are read as normalized performance across the episode: 1.0 represents a neutral result aligned with normalization thresholds; values above 1.0 indicate above-average performance. Manufacturer C consistently outperforms from episode 5 onward due to the compounding healthy trend. Manufacturer B's lower individual score reflects volume-driven margins under pressure from the private label.
+
+### Knowledge graph — after 10 episodes
+
+```json
+{
+  "nodes": [
+    "ChipsPremium", "ChipsMass", "ProteinBar", "RiceCakes Bio",
+    "summer", "christmas", "mfr_a", "mfr_b", "mfr_c"
+  ],
+  "edges": [
+    {
+      "source": "ChipsPremium", "target": "summer",
+      "relation": "demand_lift", "value": 1.27,
+      "confidence": 0.81, "layer": 1, "evidence_count": 6
+    },
+    {
+      "source": "mfr_a", "target": "ChipsPremium",
+      "relation": "promo_roi", "value": 2.31,
+      "confidence": 0.79, "layer": 1, "evidence_count": 5
+    },
+    {
+      "source": "ProteinBar", "target": "healthy_trend",
+      "relation": "demand_sensitivity", "value": 0.34,
+      "confidence": 0.68, "layer": 2, "evidence_count": 3
+    },
+    {
+      "source": "mfr_b", "target": "ChipsMass",
+      "relation": "avg_discount_rate", "value": 0.21,
+      "confidence": 0.72, "layer": 2, "evidence_count": 4
+    }
+  ]
+}
+```
+
+Layer 1 edges (e.g. summer demand lift for ChipsPremium, confirmed promotional ROI for Manufacturer A) represent market laws that agents treat as reliable background knowledge. Layer 2 edges (e.g. Manufacturer B's discount tendency) are still contingent — they influence agent reasoning but can be contradicted and will decay if not reconfirmed.
+
+### How rewards evolve across episodes
+
+```
+Episode  |  mfr_a  |  mfr_b  |  mfr_c  | retailer
+---------+---------+---------+---------+---------
+    1    |   0.41  |   0.38  |   0.44  |   0.52
+    2    |   0.58  |   0.51  |   0.63  |   0.67
+    3    |   0.74  |   0.62  |   0.81  |   0.79
+    5    |   1.02  |   0.85  |   1.14  |   1.03
+    8    |   1.28  |   0.96  |   1.38  |   1.19
+   10    |   1.33  |   1.03  |   1.43  |   1.24
+```
+
+The ramp-up from episodes 1–3 reflects KPI normalization: with only 4 weeks of activity, absolute values are low. The inflection around episode 5 corresponds to the first structural knowledge appearing in Layer 1 — agents begin incorporating confirmed market laws into their decisions, making proposals more targeted and acceptance rates higher.
+
+---
+
+## Project structure
 
 ```
 main.py
 src/
 ├── agents/
-│   ├── agent_base_class.py  # Classe base: chiamata LLM + parsing JSON + memoria a breve termine privata
-│   └── agents.py        # I 5 agenti
+│   ├── agent_base_class.py  # Base class: LLM call + JSON parsing + private short-term memory
+│   └── agents.py            # The 5 agents
 ├── memory/
-│   ├── system_memory.py # MarketMemoryGraph — memoria a lungo termine condivisa (grafo Layer 1/Layer 2)
-│   └── agent_memory.py  # MemoryExtractor — bridge tra breve termine e lungo termine
+│   ├── system_memory.py     # MarketMemoryGraph — shared long-term memory (Layer 1/Layer 2 graph)
+│   └── agent_memory.py      # MemoryExtractor — bridge between short-term and long-term memory
 ├── orchestrator/
-│   └── graph.py         # Orchestratore LangGraph — ciclo settimanale
+│   └── graph.py             # LangGraph orchestrator — weekly cycle
 └── world/
-    └── market_simulator.py  # Simulatore: domanda, financials, reward
+    └── market_simulator.py  # Simulator: demand, financials, rewards
 ```
 
 ---
 
 ## Setup
 
-**Requisiti:** Python 3.11+, [Ollama](https://ollama.ai) installato e in esecuzione.
+**Requirements:** Python 3.11+, [Ollama](https://ollama.ai) installed and running.
 
 ```bash
 git clone https://github.com/mamatteo/agentic_category_management.git
@@ -302,66 +378,66 @@ pip install -r requirements.txt
 ollama pull qwen3:8b
 ```
 
-### Modelli supportati
+### Supported models
 
-| Modello | Dimensione | Note |
+| Model | Size | Notes |
 |---|---|---|
-| `qwen3:8b` | ~5 GB | Raccomandato — qualità e velocità bilanciate |
-| `qwen3:14b` | ~9 GB | Qualità superiore, richiede ≥ 16 GB RAM |
-| `qwen2.5:latest` | ~5 GB | Alternativa stabile |
-| `llama3.2:latest` | ~2 GB | Più veloce, parsing JSON meno affidabile |
+| `qwen3:8b` | ~5 GB | Recommended — balanced quality and speed |
+| `qwen3:14b` | ~9 GB | Higher quality, requires ≥ 16 GB RAM |
+| `qwen2.5:latest` | ~5 GB | Stable alternative |
+| `llama3.2:latest` | ~2 GB | Faster, less reliable JSON parsing |
 
 ---
 
-## Utilizzo
+## Usage
 
 ```bash
-# Episodio singolo
+# Single episode
 python main.py
 
-# N episodi consecutivi — la memoria si accumula tra tutti
+# N consecutive episodes — memory accumulates across all of them
 python main.py --episodes 10
 
-# Episodio specifico
+# Specific episode
 python main.py --episode 5
 
-# Modello alternativo
+# Alternative model
 python main.py --model qwen2.5:latest
 
-# Riprendi da un episodio specifico
+# Resume from a specific episode
 python main.py --episodes 5 --start-from 11
 ```
 
-Ogni settimana richiede 5 chiamate LLM. Con modelli locali su hardware consumer, un episodio da 4 settimane dura tipicamente 5–15 minuti. La durata dell'episodio è configurabile in `orchestrator/graph.py` → `node_check_episode_end`.
+Each week requires 5 LLM calls. With local models on consumer hardware, a 4-week episode typically takes 5–15 minutes. Episode duration is configurable in `orchestrator/graph.py` → `node_check_episode_end`.
 
 ---
 
 ## Stack
 
-| Componente | Tecnologia |
+| Component | Technology |
 |---|---|
-| Orchestrazione agenti | [LangGraph](https://github.com/langchain-ai/langgraph) |
-| Inferenza LLM | [Ollama](https://ollama.ai) + Qwen3 (locale, no API key) |
-| Grafo di memoria | [NetworkX](https://networkx.org) |
-| Dati strutturati | [Pydantic v2](https://docs.pydantic.dev) |
-| Output terminale | [Rich](https://github.com/Textualize/rich) |
+| Agent orchestration | [LangGraph](https://github.com/langchain-ai/langgraph) |
+| LLM inference | [Ollama](https://ollama.ai) + Qwen3 (local, no API key required) |
+| Memory graph | [NetworkX](https://networkx.org) |
+| Structured data | [Pydantic v2](https://docs.pydantic.dev) |
+| Terminal output | [Rich](https://github.com/Textualize/rich) |
 
 ---
 
-## Possibili nuovi sviluppi
+## Possible extensions
 
-**Strategy journal per agente.** Attualmente ogni agente mantiene uno storico delle proprie decisioni settimanali, ma non sintetizza insight di lungo periodo. Un journal persistente, alimentato dall'LLM a fine episodio, permetterebbe a ciascun agente di ragionare su pattern multi-episodio: *"nelle ultime 5 stagioni estive, le promozioni su ChipsPremium hanno generato ROI superiore alla media"*. Trasformerebbe la memoria da log a vera intelligenza strategica.
+**Per-agent strategy journal.** Currently each agent maintains a history of its own weekly decisions but does not synthesize long-term insights. A persistent journal, fed by the LLM at the end of each episode, would allow each agent to reason about multi-episode patterns: *"in the last 5 summer seasons, promotions on ChipsPremium generated above-average ROI."* It would transform memory from a log into genuine strategic intelligence.
 
-**Negoziazione multi-round.** Il protocollo attuale prevede un singolo ciclo proposta–risposta per settimana. La negoziazione reale in GDO è molto più articolata: joint business plan annuali, accordi quadro su più SKU, rinegoziazione delle condizioni al raggiungimento di target di volume. Estendere il protocollo a più round esporrebbe dinamiche di potere negoziale che il modello attuale non cattura.
+**Multi-round negotiation.** The current protocol provides a single proposal–response cycle per week. Real GDO negotiation is far more articulated: annual joint business plans, framework agreements across multiple SKUs, renegotiation of conditions when volume targets are reached. Extending the protocol to multiple rounds would expose negotiating power dynamics that the current model does not capture.
 
-**Topologia multi-retailer.** Con un solo retailer, i manufacturer non affrontano il problema reale dell'allocazione del budget promozionale tra catene diverse. Aggiungere più retailer in competizione, con profili di consumatori e politiche di categoria distinti, introdurrebbe scelte di portafoglio realistiche e tensioni tra canali.
+**Multi-retailer topology.** With a single retailer, manufacturers do not face the real problem of allocating promotional budget across different chains. Adding multiple retailers in competition — with distinct consumer profiles and category policies — would introduce realistic portfolio choices and inter-channel tensions.
 
-**Meccaniche di supply chain.** Le promozioni generano picchi di domanda che devono essere anticipati nella pianificazione produttiva e logistica. Lead time, rischio di stockout e costi di safety stock sono vincoli concreti che oggi il simulatore ignora. Integrarli renderebbe le decisioni promozionali dei manufacturer strutturalmente più fedeli alla realtà operativa.
+**Supply chain mechanics.** Promotions generate demand spikes that must be anticipated in production and logistics planning. Lead times, stockout risk, and safety stock costs are concrete constraints the simulator currently ignores. Integrating them would make manufacturer promotional decisions structurally more faithful to operational reality.
 
-**Shock macroeconomici.** L'inflazione erode il valore reale degli sconti e altera la sensibilità al prezzo dei consumatori. Le disruption dell'offerta cambiano i rapporti di forza tra manufacturer e retailer. Introdurre questi shock permetterebbe di testare la robustezza della conoscenza accumulata dal sistema in presenza di distribution shift, un banco di prova per la qualità del grafo di memoria.
+**Macroeconomic shocks.** Inflation erodes the real value of discounts and alters consumer price sensitivity. Supply disruptions shift the balance of power between manufacturers and retailers. Introducing these shocks would allow testing the robustness of the system's accumulated knowledge under distribution shift — a benchmark for the quality of the memory graph.
 
-**Loop RL con valutazione statistica delle policy.** Il sistema attuale usa ragionamento LLM senza ottimizzazione formale delle policy. Un loop di reinforcement learning con experience replay consentirebbe di separare la conoscenza strutturale appresa dal comportamento degli agenti, valutare statisticamente l'efficacia delle strategie promozionali, e confrontare policy alternative in modo rigoroso.
+**RL loop with statistical policy evaluation.** The current system uses LLM reasoning without formal policy optimization. A reinforcement learning loop with experience replay would allow separating the learned structural knowledge from agent behavior, statistically evaluating the effectiveness of promotional strategies, and rigorously comparing alternative policies.
 
 ---
 
-*Costruito come esplorazione di sistemi genuinamente agentici in contesti enterprise, dove più attori con incentivi concorrenti prendono decisioni sequenziali in condizioni di incertezza, e l'intelligenza si accumula nel tempo.*
+*Built as an exploration of genuinely agentic systems in enterprise contexts, where multiple actors with competing incentives make sequential decisions under uncertainty — and intelligence accumulates over time.*

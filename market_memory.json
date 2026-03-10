@@ -1,0 +1,401 @@
+{
+  "current_episode": 7,
+  "nodes": {
+    "c1a31ad4": {
+      "id": "c1a31ad4",
+      "node_type": "category",
+      "label": "chips",
+      "attributes": {}
+    },
+    "ea1a8d32": {
+      "id": "ea1a8d32",
+      "node_type": "category",
+      "label": "crackers",
+      "attributes": {}
+    },
+    "e1fa9498": {
+      "id": "e1fa9498",
+      "node_type": "category",
+      "label": "healthy",
+      "attributes": {}
+    },
+    "e7fef9ca": {
+      "id": "e7fef9ca",
+      "node_type": "season",
+      "label": "Q1_inverno",
+      "attributes": {}
+    },
+    "d3ca501f": {
+      "id": "d3ca501f",
+      "node_type": "season",
+      "label": "Q2_primavera",
+      "attributes": {}
+    },
+    "c483cde4": {
+      "id": "c483cde4",
+      "node_type": "season",
+      "label": "Q3_estate",
+      "attributes": {}
+    },
+    "a6fbb7dd": {
+      "id": "a6fbb7dd",
+      "node_type": "season",
+      "label": "Q4_autunno_natale",
+      "attributes": {}
+    },
+    "1a3377f3": {
+      "id": "1a3377f3",
+      "node_type": "manufacturer",
+      "label": "mfr_a",
+      "attributes": {}
+    },
+    "bed8b19b": {
+      "id": "bed8b19b",
+      "node_type": "manufacturer",
+      "label": "mfr_b",
+      "attributes": {}
+    },
+    "b3b4254f": {
+      "id": "b3b4254f",
+      "node_type": "manufacturer",
+      "label": "mfr_c",
+      "attributes": {}
+    },
+    "9b4e4d48": {
+      "id": "9b4e4d48",
+      "node_type": "manufacturer",
+      "label": "retailer",
+      "attributes": {}
+    },
+    "8bba6c0a": {
+      "id": "8bba6c0a",
+      "node_type": "sku",
+      "label": "chips_a",
+      "attributes": {
+        "name": "ChipsPremium 150g",
+        "subcategory": "chips"
+      }
+    },
+    "4fb403fb": {
+      "id": "4fb403fb",
+      "node_type": "sku",
+      "label": "crackers_a",
+      "attributes": {
+        "name": "CrackersPremium 200g",
+        "subcategory": "crackers"
+      }
+    },
+    "7489602e": {
+      "id": "7489602e",
+      "node_type": "sku",
+      "label": "chips_b",
+      "attributes": {
+        "name": "ChipsMass 200g",
+        "subcategory": "chips"
+      }
+    },
+    "bd39edb0": {
+      "id": "bd39edb0",
+      "node_type": "sku",
+      "label": "crackers_b",
+      "attributes": {
+        "name": "CrackersMass 250g",
+        "subcategory": "crackers"
+      }
+    },
+    "8a95d1c7": {
+      "id": "8a95d1c7",
+      "node_type": "sku",
+      "label": "chips_b2",
+      "attributes": {
+        "name": "ChipsMass Gusto 150g",
+        "subcategory": "chips"
+      }
+    },
+    "ae41c672": {
+      "id": "ae41c672",
+      "node_type": "sku",
+      "label": "healthy_c",
+      "attributes": {
+        "name": "ProteinBar 40g",
+        "subcategory": "healthy"
+      }
+    },
+    "2c9f3164": {
+      "id": "2c9f3164",
+      "node_type": "sku",
+      "label": "healthy_c2",
+      "attributes": {
+        "name": "RiceCakes Bio 100g",
+        "subcategory": "healthy"
+      }
+    },
+    "667475e8": {
+      "id": "667475e8",
+      "node_type": "sku",
+      "label": "pl_chips",
+      "attributes": {
+        "name": "PrivateLabel Chips",
+        "subcategory": "chips"
+      }
+    },
+    "b267356a": {
+      "id": "b267356a",
+      "node_type": "observation",
+      "label": "promo_lift_healthy_c",
+      "attributes": {}
+    },
+    "d218d381": {
+      "id": "d218d381",
+      "node_type": "observation",
+      "label": "demand_Q1_inverno",
+      "attributes": {}
+    },
+    "18ff877a": {
+      "id": "18ff877a",
+      "node_type": "retailer",
+      "label": "retailer",
+      "attributes": {}
+    },
+    "08e853e0": {
+      "id": "08e853e0",
+      "node_type": "observation",
+      "label": "promo_lift_chips_b2",
+      "attributes": {}
+    },
+    "cd20a8f1": {
+      "id": "cd20a8f1",
+      "node_type": "observation",
+      "label": "promo_lift_healthy_c2",
+      "attributes": {}
+    },
+    "cb94554b": {
+      "id": "cb94554b",
+      "node_type": "observation",
+      "label": "promo_lift_chips_a",
+      "attributes": {}
+    }
+  },
+  "edges": {
+    "fa9a132a": {
+      "id": "fa9a132a",
+      "source_id": "ae41c672",
+      "target_id": "b267356a",
+      "relation": "promo_generates_lift",
+      "layer": "tactical",
+      "confidence": 0.30999999999999983,
+      "evidence_count": 3,
+      "first_seen_episode": 1,
+      "last_seen_episode": 4,
+      "value": 2.0297646296198364,
+      "description": "healthy_c: lift medio 1.57x con promozione",
+      "contradictions": 0
+    },
+    "fb36298a": {
+      "id": "fb36298a",
+      "source_id": "e7fef9ca",
+      "target_id": "d218d381",
+      "relation": "seasonal_demand_level",
+      "layer": "structural",
+      "confidence": 0.9799999999999998,
+      "evidence_count": 7,
+      "first_seen_episode": 1,
+      "last_seen_episode": 7,
+      "value": 116.20155626524142,
+      "description": "Domanda media in Q1_inverno: 120 unit\u00e0/settimana",
+      "contradictions": 0
+    },
+    "ac30124a": {
+      "id": "ac30124a",
+      "source_id": "1a3377f3",
+      "target_id": "18ff877a",
+      "relation": "proposal_acceptance_rate",
+      "layer": "structural",
+      "confidence": 0.9799999999999998,
+      "evidence_count": 7,
+      "first_seen_episode": 1,
+      "last_seen_episode": 7,
+      "value": 0.7142857142857143,
+      "description": "mfr_a: 75% delle proposte accettate dal retailer",
+      "contradictions": 0
+    },
+    "5e432b2c": {
+      "id": "5e432b2c",
+      "source_id": "1a3377f3",
+      "target_id": "18ff877a",
+      "relation": "avg_discount_proposed",
+      "layer": "structural",
+      "confidence": 0.9799999999999998,
+      "evidence_count": 7,
+      "first_seen_episode": 1,
+      "last_seen_episode": 7,
+      "value": 26.071428571428573,
+      "description": "mfr_a: sconto medio proposto 20.0%",
+      "contradictions": 0
+    },
+    "4785a7ae": {
+      "id": "4785a7ae",
+      "source_id": "bed8b19b",
+      "target_id": "18ff877a",
+      "relation": "proposal_acceptance_rate",
+      "layer": "structural",
+      "confidence": 0.9799999999999998,
+      "evidence_count": 7,
+      "first_seen_episode": 1,
+      "last_seen_episode": 7,
+      "value": 0.39285714285714285,
+      "description": "mfr_b: 50% delle proposte accettate dal retailer",
+      "contradictions": 0
+    },
+    "fb4a01c5": {
+      "id": "fb4a01c5",
+      "source_id": "bed8b19b",
+      "target_id": "18ff877a",
+      "relation": "avg_discount_proposed",
+      "layer": "structural",
+      "confidence": 0.9799999999999998,
+      "evidence_count": 7,
+      "first_seen_episode": 1,
+      "last_seen_episode": 7,
+      "value": 26.714285714285715,
+      "description": "mfr_b: sconto medio proposto 17.0%",
+      "contradictions": 0
+    },
+    "9885a862": {
+      "id": "9885a862",
+      "source_id": "b3b4254f",
+      "target_id": "18ff877a",
+      "relation": "proposal_acceptance_rate",
+      "layer": "structural",
+      "confidence": 0.9799999999999998,
+      "evidence_count": 7,
+      "first_seen_episode": 1,
+      "last_seen_episode": 7,
+      "value": 0.0,
+      "description": "mfr_c: 0% delle proposte accettate dal retailer",
+      "contradictions": 0
+    },
+    "03db0bbc": {
+      "id": "03db0bbc",
+      "source_id": "b3b4254f",
+      "target_id": "18ff877a",
+      "relation": "avg_discount_proposed",
+      "layer": "structural",
+      "confidence": 0.9799999999999998,
+      "evidence_count": 7,
+      "first_seen_episode": 1,
+      "last_seen_episode": 7,
+      "value": 29.464285714285715,
+      "description": "mfr_c: sconto medio proposto 22.5%",
+      "contradictions": 0
+    },
+    "b1f10f41": {
+      "id": "b1f10f41",
+      "source_id": "667475e8",
+      "target_id": "c1a31ad4",
+      "relation": "private_label_share",
+      "layer": "structural",
+      "confidence": 0.9799999999999998,
+      "evidence_count": 7,
+      "first_seen_episode": 1,
+      "last_seen_episode": 7,
+      "value": 0.4745226662447322,
+      "description": "Private label share in chips: 46.0%",
+      "contradictions": 0
+    },
+    "95410732": {
+      "id": "95410732",
+      "source_id": "8a95d1c7",
+      "target_id": "08e853e0",
+      "relation": "promo_generates_lift",
+      "layer": "tactical",
+      "confidence": 0.6399999999999999,
+      "evidence_count": 4,
+      "first_seen_episode": 2,
+      "last_seen_episode": 6,
+      "value": 2.0353718112320287,
+      "description": "chips_b2: lift medio 3.13x con promozione",
+      "contradictions": 0
+    },
+    "33fe0293": {
+      "id": "33fe0293",
+      "source_id": "8bba6c0a",
+      "target_id": "cb94554b",
+      "relation": "promo_generates_lift",
+      "layer": "tactical",
+      "confidence": 0.45,
+      "evidence_count": 1,
+      "first_seen_episode": 6,
+      "last_seen_episode": 6,
+      "value": 3.196913509623984,
+      "description": "chips_a: lift medio 3.20x con promozione",
+      "contradictions": 0
+    }
+  },
+  "promotion_log": [
+    {
+      "episode": 4,
+      "edge_id": "fb36298a",
+      "relation": "seasonal_demand_level",
+      "description": "Domanda media in Q1_inverno: 120 unit\u00e0/settimana",
+      "confidence": 0.8199999999999998,
+      "evidence_count": 5
+    },
+    {
+      "episode": 4,
+      "edge_id": "ac30124a",
+      "relation": "proposal_acceptance_rate",
+      "description": "mfr_a: 75% delle proposte accettate dal retailer",
+      "confidence": 0.8199999999999998,
+      "evidence_count": 5
+    },
+    {
+      "episode": 4,
+      "edge_id": "5e432b2c",
+      "relation": "avg_discount_proposed",
+      "description": "mfr_a: sconto medio proposto 20.0%",
+      "confidence": 0.8199999999999998,
+      "evidence_count": 5
+    },
+    {
+      "episode": 4,
+      "edge_id": "4785a7ae",
+      "relation": "proposal_acceptance_rate",
+      "description": "mfr_b: 50% delle proposte accettate dal retailer",
+      "confidence": 0.8199999999999998,
+      "evidence_count": 5
+    },
+    {
+      "episode": 4,
+      "edge_id": "fb4a01c5",
+      "relation": "avg_discount_proposed",
+      "description": "mfr_b: sconto medio proposto 17.0%",
+      "confidence": 0.8199999999999998,
+      "evidence_count": 5
+    },
+    {
+      "episode": 4,
+      "edge_id": "9885a862",
+      "relation": "proposal_acceptance_rate",
+      "description": "mfr_c: 0% delle proposte accettate dal retailer",
+      "confidence": 0.8199999999999998,
+      "evidence_count": 5
+    },
+    {
+      "episode": 4,
+      "edge_id": "03db0bbc",
+      "relation": "avg_discount_proposed",
+      "description": "mfr_c: sconto medio proposto 22.5%",
+      "confidence": 0.8199999999999998,
+      "evidence_count": 5
+    },
+    {
+      "episode": 4,
+      "edge_id": "b1f10f41",
+      "relation": "private_label_share",
+      "description": "Private label share in chips: 46.0%",
+      "confidence": 0.8199999999999998,
+      "evidence_count": 5
+    }
+  ]
+}

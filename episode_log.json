@@ -1,0 +1,79 @@
+[
+  {
+    "episode": 1,
+    "rewards": {
+      "mfr_a": 0.372636402337471,
+      "mfr_b": 0.158435950654997,
+      "mfr_c": 0.1307453304402229,
+      "retailer": 0.1394456389172957,
+      "consumer": 0.3957620280304336
+    },
+    "new_structural_knowledge": []
+  },
+  {
+    "episode": 2,
+    "rewards": {
+      "mfr_a": 0.3161788124600254,
+      "mfr_b": 0.10494421172528517,
+      "mfr_c": 0.1046118734946011,
+      "retailer": 0.12523281335622036,
+      "consumer": 0.3826928444379245
+    },
+    "new_structural_knowledge": []
+  },
+  {
+    "episode": 3,
+    "rewards": {
+      "mfr_a": 0.20706276122651768,
+      "mfr_b": 0.18392145690851242,
+      "mfr_c": 0.08790561346643727,
+      "retailer": 0.11795896609217163,
+      "consumer": 0.3779868519733599
+    },
+    "new_structural_knowledge": []
+  },
+  {
+    "episode": 4,
+    "rewards": {
+      "mfr_a": 0.3109106633792486,
+      "mfr_b": 0.10052975063011595,
+      "mfr_c": 0.11619833551262856,
+      "retailer": 0.1225182821579065,
+      "consumer": 0.3826223505808608
+    },
+    "new_structural_knowledge": []
+  },
+  {
+    "episode": 5,
+    "rewards": {
+      "mfr_a": 0.18729102394011932,
+      "mfr_b": 0.09526787843167721,
+      "mfr_c": 0.07752968273434374,
+      "retailer": 0.10466457626763638,
+      "consumer": 0.36650027490206755
+    },
+    "new_structural_knowledge": []
+  },
+  {
+    "episode": 6,
+    "rewards": {
+      "mfr_a": 0.11495095319170692,
+      "mfr_b": 0.23563454981624715,
+      "mfr_c": 0.10067193225149393,
+      "retailer": 0.11612215443676734,
+      "consumer": 0.375424312147497
+    },
+    "new_structural_knowledge": []
+  },
+  {
+    "episode": 7,
+    "rewards": {
+      "mfr_a": 0.22527669158735952,
+      "mfr_b": 0.2090639832412416,
+      "mfr_c": 0.09262236115212684,
+      "retailer": 0.12498977159802233,
+      "consumer": 0.38277850500684785
+    },
+    "new_structural_knowledge": []
+  }
+]
